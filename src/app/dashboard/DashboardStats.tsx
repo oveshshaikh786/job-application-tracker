@@ -2,54 +2,20 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useApplicationsStore } from "@/lib/store/useApplicationsStore";
 
-import type { Stage } from "@/domain/application/types";
+import type { Stage, Application as AppRow } from "@/domain/application/types";
+import { isClosed, getEnteredStageAt } from "@/domain/application/stage";
+import { getFollowUpInfo } from "@/domain/application/followup";
+import { getSlaInfo } from "@/domain/application/sla";
+import { toMs } from "@/domain/application/time";
 
 type StageUI = Exclude<Stage, "ARCHIVED">;
 
 type DashboardStatsProps = {
   title?: string;
   subtitle?: string;
-
-  total: number;
-  active: number;
-  overdue: number;
-  stuck: number;
-
-  avgStageDays: number | null;
-  dueIn24h: number;
-  dueIn7d: number;
-
-  archived?: number;
-
-  created7: number;
-  createdPerDay7: number;
-  creationTrend: string;
-
-  moves7: number;
-  movesPerDay7: number;
-  moveTrend: string;
-
-  notes7: number;
-  notesPerDay7: number;
-  noteTrend: string;
-
-  stageOrder: StageUI[];
-  stageLabel: Record<StageUI, string>;
-  stageCounts: Record<StageUI, number>;
-
-  overdueByStage?: Partial<Record<StageUI, number>>;
-  stuckByStage?: Partial<Record<StageUI, number>>;
-  funnelRows?: {
-    key: StageUI;
-    label: string;
-    count: number;
-    fromPrevPct: string;
-    dropPct?: string;
-  }[];
-
   newHref?: string;
 };
 
@@ -70,6 +36,28 @@ type QuickAddState = {
   source: string;
   stage: StageUI;
   followUpPreset: "none" | "tomorrow" | "3d" | "7d";
+};
+
+const STAGE_ORDER_UI: StageUI[] = [
+  "DRAFT",
+  "APPLIED",
+  "RECRUITER_SCREEN",
+  "TECH_SCREEN",
+  "ONSITE",
+  "OFFER",
+  "REJECTED",
+  "WITHDRAWN",
+];
+
+const STAGE_LABEL_UI: Record<StageUI, string> = {
+  DRAFT: "Draft",
+  APPLIED: "Applied",
+  RECRUITER_SCREEN: "Recruiter",
+  TECH_SCREEN: "Tech",
+  ONSITE: "Onsite",
+  OFFER: "Offer",
+  REJECTED: "Rejected",
+  WITHDRAWN: "Withdrawn",
 };
 
 function isoFromQuickPreset(p: QuickAddState["followUpPreset"]) {
@@ -96,6 +84,18 @@ function buildCreatePayload(state: QuickAddState) {
     source: state.source.trim() || null,
     nextActionAt: isoFromQuickPreset(state.followUpPreset),
   };
+}
+
+function pct(n: number, d: number) {
+  if (!d) return "—";
+  const v = (n / d) * 100;
+  return v >= 10 ? `${Math.round(v)}%` : `${v.toFixed(1)}%`;
+}
+
+function safeRate(n: number, d: number) {
+  if (!d) return "—";
+  const v = n / d;
+  return v >= 10 ? `${Math.round(v)}x` : `${v.toFixed(2)}x`;
 }
 
 function StatCard(props: {
@@ -328,8 +328,35 @@ function GhostButton(props: {
   );
 }
 
+function buildLocalFunnelRows(stageCounts: Record<StageUI, number>) {
+  const steps: { key: StageUI; label: string }[] = [
+    { key: "APPLIED", label: "Applied" },
+    { key: "RECRUITER_SCREEN", label: "Recruiter" },
+    { key: "TECH_SCREEN", label: "Tech" },
+    { key: "ONSITE", label: "Onsite" },
+    { key: "OFFER", label: "Offer" },
+  ];
+
+  return steps.map((s, idx) => {
+    const count = stageCounts[s.key] ?? 0;
+    const prevCount = idx === 0 ? 0 : (stageCounts[steps[idx - 1].key] ?? 0);
+
+    return {
+      key: s.key,
+      label: s.label,
+      count,
+      fromPrevPct: idx === 0 ? "—" : pct(count, prevCount),
+      dropPct:
+        idx === 0 || prevCount === 0
+          ? "—"
+          : `${Math.round(((prevCount - count) / prevCount) * 100)}%`,
+    };
+  });
+}
+
 export default function DashboardStats(props: DashboardStatsProps) {
-  const router = useRouter();
+  const apps = useApplicationsStore((s) => s.apps);
+  const addApp = useApplicationsStore((s) => s.addApp);
 
   const title = props.title ?? "Job Tracker";
   const subtitle = props.subtitle ?? "Kanban pipeline (v0)";
@@ -424,20 +451,121 @@ export default function DashboardStats(props: DashboardStatsProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const nonArchivedApps = useMemo(
+    () => apps.filter((a) => a.stage !== "ARCHIVED"),
+    [apps],
+  );
+
+  const total = nonArchivedApps.length;
+  const activeApps = nonArchivedApps.filter((a) => !isClosed(a.stage));
+  const active = activeApps.length;
+
+  const overdueApps = activeApps.filter(
+    (a) => getFollowUpInfo(a, nowMs)?.kind === "overdue",
+  );
+
+  const dueIn24hApps = activeApps.filter((a) => {
+    const follow = getFollowUpInfo(a, nowMs);
+    if (follow?.kind !== "due") return false;
+    if (!a.nextActionAt) return false;
+    const diff = toMs(a.nextActionAt) - nowMs;
+    return diff >= 0 && diff <= 24 * 60 * 60 * 1000;
+  });
+
+  const dueIn7dApps = activeApps.filter((a) => {
+    const follow = getFollowUpInfo(a, nowMs);
+    if (follow?.kind !== "due") return false;
+    if (!a.nextActionAt) return false;
+    const diff = toMs(a.nextActionAt) - nowMs;
+    return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+  });
+
+  const slaBreachedApps = activeApps.filter((a) => {
+    const sla = getSlaInfo(a, nowMs);
+    return !!sla?.breached;
+  });
+
+  let sumStageDays = 0;
+  let denom = 0;
+  for (const a of activeApps) {
+    const enteredAt = getEnteredStageAt(a);
+    if (!enteredAt) continue;
+    const days = Math.floor((nowMs - enteredAt) / (24 * 60 * 60 * 1000));
+    sumStageDays += days;
+    denom += 1;
+  }
+  const avgStageDays = denom === 0 ? null : sumStageDays / denom;
+
+  const stageOrder = STAGE_ORDER_UI;
+  const stageLabel = STAGE_LABEL_UI;
+
+  const stageCounts: Record<StageUI, number> = stageOrder.reduce(
+    (acc, s) => {
+      acc[s] = 0;
+      return acc;
+    },
+    {} as Record<StageUI, number>,
+  );
+
+  for (const a of nonArchivedApps) {
+    const s = a.stage as StageUI;
+    if (stageCounts[s] != null) stageCounts[s] += 1;
+  }
+
+  const overdueByStage: Partial<Record<StageUI, number>> = {};
+  for (const a of overdueApps) {
+    const s = a.stage as StageUI;
+    overdueByStage[s] = (overdueByStage[s] ?? 0) + 1;
+  }
+
+  const stuckByStage: Partial<Record<StageUI, number>> = {};
+  for (const a of slaBreachedApps) {
+    const s = a.stage as StageUI;
+    stuckByStage[s] = (stuckByStage[s] ?? 0) + 1;
+  }
+
+  const funnelRows = buildLocalFunnelRows(stageCounts);
+
+  const archived = apps.filter((a) => a.stage === "ARCHIVED").length;
+
   const avgStageValue = useMemo(() => {
-    if (props.avgStageDays == null) {
+    if (avgStageDays == null) {
       return { value: "—", hint: "—" };
     }
 
     return {
-      value: Math.round(props.avgStageDays),
-      hint: `${props.avgStageDays.toFixed(1)} days`,
+      value: Math.round(avgStageDays),
+      hint: `${avgStageDays.toFixed(1)} days`,
     };
-  }, [props.avgStageDays]);
+  }, [avgStageDays]);
 
   const statsGridCols = isMobile
     ? "repeat(2, minmax(0, 1fr))"
     : "repeat(auto-fit, minmax(160px, 1fr))";
+
+  const created7 = 0;
+  const created30 = 0;
+  const moves7 = 0;
+  const moves30 = 0;
+  const notes7 = 0;
+  const notes30 = 0;
+
+  const createdPerDay7 = created7 / 7;
+  const createdPerDay30 = created30 / 30;
+  const movesPerDay7 = moves7 / 7;
+  const movesPerDay30 = moves30 / 30;
+  const notesPerDay7 = notes7 / 7;
+  const notesPerDay30 = notes30 / 30;
+
+  const creationTrend = safeRate(createdPerDay7, createdPerDay30);
+  const moveTrend = safeRate(movesPerDay7, movesPerDay30);
+  const noteTrend = safeRate(notesPerDay7, notesPerDay30);
 
   async function createQuick() {
     if (quickSaving) return;
@@ -467,11 +595,11 @@ export default function DashboardStats(props: DashboardStatsProps) {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
+      const raw = await res.text().catch(() => "");
 
+      if (!res.ok) {
         try {
-          const parsed = JSON.parse(txt);
+          const parsed = JSON.parse(raw);
           const fieldErrors = parsed?.details?.fieldErrors;
 
           if (fieldErrors) {
@@ -487,15 +615,16 @@ export default function DashboardStats(props: DashboardStatsProps) {
           }
 
           throw new Error(
-            parsed?.error || txt || "Failed to create application",
+            parsed?.error || raw || "Failed to create application",
           );
         } catch {
-          throw new Error(txt || "Failed to create application");
+          throw new Error(raw || "Failed to create application");
         }
       }
 
+      const created = JSON.parse(raw) as AppRow;
+      addApp(created);
       closeQuick();
-      router.refresh();
     } catch (e: unknown) {
       setQuickErr(
         e instanceof Error ? e.message : "Failed to create application.",
@@ -626,20 +755,22 @@ export default function DashboardStats(props: DashboardStatsProps) {
           width: "100%",
         }}
       >
-        <StatCard label="Total" value={props.total} />
-        <StatCard label="Active" value={props.active} tone="accent" />
-        <StatCard label="Overdue" value={props.overdue} tone="warn" />
-        <StatCard label="SLA breached" value={props.stuck} tone="danger" />
+        <StatCard label="Total" value={total} />
+        <StatCard label="Active" value={active} tone="accent" />
+        <StatCard label="Overdue" value={overdueApps.length} tone="warn" />
+        <StatCard
+          label="SLA breached"
+          value={slaBreachedApps.length}
+          tone="danger"
+        />
         <StatCard
           label="Avg stage (days)"
           value={avgStageValue.value}
           hint={avgStageValue.hint}
         />
-        <StatCard label="Due in 24h" value={props.dueIn24h} tone="warn" />
-        <StatCard label="Due in 7d" value={props.dueIn7d} />
-        {typeof props.archived === "number" ? (
-          <StatCard label="Archived" value={props.archived} />
-        ) : null}
+        <StatCard label="Due in 24h" value={dueIn24hApps.length} tone="warn" />
+        <StatCard label="Due in 7d" value={dueIn7dApps.length} />
+        <StatCard label="Archived" value={archived} />
       </div>
 
       {showDetails ? (
@@ -666,34 +797,34 @@ export default function DashboardStats(props: DashboardStatsProps) {
           >
             <MetricCard
               label="Created (last 7d)"
-              primary={`${props.created7}`}
-              secondary={`${props.createdPerDay7.toFixed(
+              primary={`${created7}`}
+              secondary={`${createdPerDay7.toFixed(
                 1,
-              )}/day • vs 30d: ${props.creationTrend}`}
+              )}/day • vs 30d: ${creationTrend}`}
             />
             <MetricCard
               label="Stage moves (last 7d)"
-              primary={`${props.moves7}`}
-              secondary={`${props.movesPerDay7.toFixed(
+              primary={`${moves7}`}
+              secondary={`${movesPerDay7.toFixed(
                 1,
-              )}/day • vs 30d: ${props.moveTrend}`}
+              )}/day • vs 30d: ${moveTrend}`}
             />
             <MetricCard
               label="Notes (last 7d)"
-              primary={`${props.notes7}`}
-              secondary={`${props.notesPerDay7.toFixed(
+              primary={`${notes7}`}
+              secondary={`${notesPerDay7.toFixed(
                 1,
-              )}/day • vs 30d: ${props.noteTrend}`}
+              )}/day • vs 30d: ${noteTrend}`}
             />
           </div>
 
           <SectionHeader title="Stage breakdown" />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {props.stageOrder.map((stage) => (
+            {stageOrder.map((stage) => (
               <Pill
                 key={stage}
-                label={props.stageLabel[stage]}
-                value={props.stageCounts[stage] ?? 0}
+                label={stageLabel[stage]}
+                value={stageCounts[stage] ?? 0}
               />
             ))}
           </div>
@@ -710,16 +841,16 @@ export default function DashboardStats(props: DashboardStatsProps) {
           >
             <BreakdownTable
               title="Overdue by stage"
-              stageOrder={props.stageOrder}
-              stageLabel={props.stageLabel}
-              data={props.overdueByStage}
+              stageOrder={stageOrder}
+              stageLabel={stageLabel}
+              data={overdueByStage}
               emptyText="No overdue items."
             />
             <BreakdownTable
               title="SLA-breached by stage"
-              stageOrder={props.stageOrder}
-              stageLabel={props.stageLabel}
-              data={props.stuckByStage}
+              stageOrder={stageOrder}
+              stageLabel={stageLabel}
+              data={stuckByStage}
               emptyText="No SLA breaches."
             />
           </div>
@@ -737,7 +868,7 @@ export default function DashboardStats(props: DashboardStatsProps) {
                 : "repeat(auto-fit, minmax(180px, 1fr))",
             }}
           >
-            {(props.funnelRows ?? []).map((row, idx) => (
+            {funnelRows.map((row, idx) => (
               <FunnelCard
                 key={row.key}
                 label={row.label}

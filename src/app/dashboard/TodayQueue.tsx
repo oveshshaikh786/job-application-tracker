@@ -10,14 +10,11 @@ import {
 import { useRouter } from "next/navigation";
 
 import type { Application } from "@/domain/application/types";
+import { useApplicationsStore } from "@/lib/store/useApplicationsStore";
 import {
   buildTodayQueue,
   type TodayQueueItem,
 } from "@/domain/application/todayQueue";
-
-type TodayQueueProps = {
-  apps: Application[];
-};
 
 type MqlLegacy = {
   addListener?: (cb: (e: MediaQueryListEvent) => void) => void;
@@ -276,8 +273,12 @@ function computeAtsScore(args: {
   return { score: Math.round(raw), reasons };
 }
 
-export default function TodayQueue({ apps }: TodayQueueProps) {
+export default function TodayQueue() {
   const router = useRouter();
+  const apps = useApplicationsStore((s) => s.apps);
+  const updateApp = useApplicationsStore((s) => s.updateApp);
+  const removeApp = useApplicationsStore((s) => s.removeApp);
+
   const isMobile = useMediaQuery("(max-width: 520px)");
 
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -307,12 +308,13 @@ export default function TodayQueue({ apps }: TodayQueueProps) {
           throw new Error(txt || `PATCH failed (${res.status})`);
         }
 
-        router.refresh();
+        const updated = (await res.json()) as Application;
+        updateApp(updated);
       } finally {
         markSaving(id, false);
       }
     },
-    [markSaving, router],
+    [markSaving, updateApp],
   );
 
   const deleteApplication = useCallback(
@@ -328,12 +330,12 @@ export default function TodayQueue({ apps }: TodayQueueProps) {
           throw new Error(txt || `DELETE failed (${res.status})`);
         }
 
-        router.refresh();
+        removeApp(id);
       } finally {
         markSaving(id, false);
       }
     },
-    [markSaving, router],
+    [markSaving, removeApp],
   );
 
   const actions = useMemo(

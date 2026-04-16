@@ -211,32 +211,8 @@ export default async function DashboardPage() {
         title={stats.title ?? "Job Tracker"}
         subtitle={stats.subtitle ?? "Kanban pipeline (v0)"}
         newHref="/dashboard/new"
-        total={total}
-        active={active}
-        overdue={overdue}
-        stuck={slaBreached}
-        avgStageDays={avgStageDays}
-        dueIn24h={dueIn24h}
-        dueIn7d={dueIn7d}
-        archived={stats.archived}
-        created7={created7}
-        createdPerDay7={createdPerDay7}
-        creationTrend={creationTrend}
-        moves7={moves7}
-        movesPerDay7={movesPerDay7}
-        moveTrend={moveTrend}
-        notes7={notes7}
-        notesPerDay7={notesPerDay7}
-        noteTrend={noteTrend}
-        stageOrder={stageOrder}
-        stageLabel={stageLabel}
-        stageCounts={stageCounts}
-        overdueByStage={stats.overdueByStage}
-        stuckByStage={stats.stuckByStage}
-        funnelRows={funnelRows}
       />
-
-      <TodayQueue apps={apps} />
+      <TodayQueue />
       <KanbanBoard initialApps={apps} />
     </main>
   );
