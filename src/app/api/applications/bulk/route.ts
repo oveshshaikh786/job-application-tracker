@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
+//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { ApplicationStage, EventType } from "@prisma/client";
-
-const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { WORKSPACE_ID } from "@/lib/workspace";
+//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
 
 const ALLOWED_STAGES: ApplicationStage[] = [
   ApplicationStage.DRAFT,

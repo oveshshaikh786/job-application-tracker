@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
+//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { ApplicationStage } from "@prisma/client";
 
 import type { Application, Stage } from "@/domain/application/types";
@@ -8,8 +8,9 @@ import { isClosed, getEnteredStageAt } from "@/domain/application/stage";
 import { getFollowUpInfo } from "@/domain/application/followup";
 import { getSlaInfo } from "@/domain/application/sla";
 import { toMs } from "@/domain/application/time";
+import { WORKSPACE_ID } from "@/lib/workspace";
 
-const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const UI_STAGE_ORDER: ApplicationStage[] = [

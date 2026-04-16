@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
+//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { z } from "zod";
 
-const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { WORKSPACE_ID } from "@/lib/workspace";
 
 const CreateNoteSchema = z.object({
   message: z.string().min(1).max(5000),

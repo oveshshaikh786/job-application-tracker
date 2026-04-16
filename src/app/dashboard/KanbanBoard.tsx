@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ApplicationCard from "@/components/ApplicationCard";
+import { useApplicationsStore } from "@/lib/store/useApplicationsStore";
 
 import type {
   Application as AppRow,
@@ -203,7 +204,11 @@ export default function KanbanBoard({
 }) {
   const router = useRouter();
 
-  const [apps, setApps] = useState<AppRow[]>(initialApps ?? []);
+  const apps = useApplicationsStore((s) => s.apps);
+  const setApps = useApplicationsStore((s) => s.setApps);
+  const updateApp = useApplicationsStore((s) => s.updateApp);
+  const removeMany = useApplicationsStore((s) => s.removeMany);
+
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<Stage | null>(null);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -221,6 +226,10 @@ export default function KanbanBoard({
   const [bulkBusy, setBulkBusy] = useState(false);
 
   const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    setApps(initialApps ?? []);
+  }, [initialApps, setApps]);
 
   useEffect(() => {
     setMounted(true);
@@ -316,16 +325,7 @@ export default function KanbanBoard({
       });
 
       const updated = (await fetchJsonOrThrow(res)) as AppRow;
-
-      setApps((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, ...updated, events: updated.events ?? a.events }
-            : a,
-        ),
-      );
-
-      router.refresh();
+      updateApp(updated);
     } finally {
       markSaving(id, false);
     }
@@ -341,16 +341,7 @@ export default function KanbanBoard({
       });
 
       const updated = (await fetchJsonOrThrow(res)) as AppRow;
-
-      setApps((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, ...updated, events: updated.events ?? a.events }
-            : a,
-        ),
-      );
-
-      router.refresh();
+      updateApp(updated);
     } finally {
       markSaving(id, false);
     }
@@ -380,9 +371,8 @@ export default function KanbanBoard({
       await fetchJsonOrThrow(res);
 
       if (payload.action === "DELETE") {
-        setApps((prev) => prev.filter((a) => !ids.includes(a.id)));
+        removeMany(ids);
         setSelectedIds(new Set());
-        router.refresh();
         return;
       }
 
@@ -411,7 +401,6 @@ export default function KanbanBoard({
           ),
         );
         setSelectedIds(new Set());
-        router.refresh();
         return;
       }
 
@@ -441,7 +430,6 @@ export default function KanbanBoard({
           ),
         );
         if (payload.stage === "ARCHIVED") setSelectedIds(new Set());
-        router.refresh();
         return;
       }
 
@@ -453,7 +441,6 @@ export default function KanbanBoard({
               : a,
           ),
         );
-        router.refresh();
         return;
       }
 
@@ -463,7 +450,6 @@ export default function KanbanBoard({
             ids.includes(a.id) ? { ...a, nextActionAt: null } : a,
           ),
         );
-        router.refresh();
       }
     } finally {
       setBulkBusy(false);
@@ -909,7 +895,6 @@ export default function KanbanBoard({
                     }}
                   >
                     <span className="board-lane-title">{s.label}</span>
-
                     <span className="board-lane-count">{items.length}</span>
                   </div>
                 </div>

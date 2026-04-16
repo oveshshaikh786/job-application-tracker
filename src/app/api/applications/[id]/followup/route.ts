@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
+//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { z } from "zod";
 import { EventType } from "@prisma/client";
 
-const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { WORKSPACE_ID } from "@/lib/workspace";
 
 const FollowupSchema = z.object({
   nextActionAt: z.string().datetime().nullable(),

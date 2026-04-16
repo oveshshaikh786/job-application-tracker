@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
+//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { CreateCompanySchema } from "@/lib/validators";
-
-const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { WORKSPACE_ID } from "@/lib/workspace";
+//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
 
 export async function GET() {
   const companies = await prisma.company.findMany({

@@ -107,7 +107,9 @@ async function getStats(): Promise<StatsResponse> {
   return res.json();
 }
 
-function buildLocalFunnelRows(stageCounts: Record<StageUI, number>): FunnelRowUI[] {
+function buildLocalFunnelRows(
+  stageCounts: Record<StageUI, number>,
+): FunnelRowUI[] {
   const steps: { key: StageUI; label: string }[] = [
     { key: "APPLIED", label: "Applied" },
     { key: "RECRUITER_SCREEN", label: "Recruiter" },
@@ -154,10 +156,13 @@ export default async function DashboardPage() {
   // Prefer server counts; if missing, compute locally from apps
   const stageCounts: Record<StageUI, number> =
     stats.stageCounts ??
-    stageOrder.reduce((acc, s) => {
-      acc[s] = 0;
-      return acc;
-    }, {} as Record<StageUI, number>);
+    stageOrder.reduce(
+      (acc, s) => {
+        acc[s] = 0;
+        return acc;
+      },
+      {} as Record<StageUI, number>,
+    );
 
   if (!stats.stageCounts) {
     for (const a of apps) {
@@ -214,7 +219,6 @@ export default async function DashboardPage() {
         dueIn24h={dueIn24h}
         dueIn7d={dueIn7d}
         archived={stats.archived}
-
         created7={created7}
         createdPerDay7={createdPerDay7}
         creationTrend={creationTrend}
@@ -224,7 +228,6 @@ export default async function DashboardPage() {
         notes7={notes7}
         notesPerDay7={notesPerDay7}
         noteTrend={noteTrend}
-
         stageOrder={stageOrder}
         stageLabel={stageLabel}
         stageCounts={stageCounts}

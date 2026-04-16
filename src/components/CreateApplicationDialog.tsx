@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
-import type { Stage } from "@/domain/application/types";
+import type { Stage, Application as AppRow } from "@/domain/application/types";
+import { useApplicationsStore } from "@/lib/store/useApplicationsStore";
 
 const STAGES: { key: Stage; label: string }[] = [
   { key: "DRAFT", label: "Draft" },
@@ -44,7 +44,7 @@ export default function CreateApplicationDialog({
   onClose,
   defaultStage,
 }: Props) {
-  const router = useRouter();
+  const addApp = useApplicationsStore((s) => s.addApp);
 
   const titleRef = useRef<HTMLInputElement | null>(null);
   const companyRef = useRef<HTMLInputElement | null>(null);
@@ -90,7 +90,6 @@ export default function CreateApplicationDialog({
     }
   }, [open, defaultStage]);
 
-  // Hard reset whenever dialog closes.
   useEffect(() => {
     if (!open) {
       resetForm(defaultStage ?? "APPLIED");
@@ -130,13 +129,11 @@ export default function CreateApplicationDialog({
       const nextActionAt = isoFromPreset(followUpPreset);
 
       const payload = {
+        companyName: trimmedCompany,
+        roleTitle: trimmedTitle,
         stage,
         source: trimmedSource || null,
         nextActionAt,
-        role: {
-          title: trimmedTitle,
-          company: { name: trimmedCompany },
-        },
       };
 
       const res = await fetch("/api/applications", {
@@ -145,13 +142,17 @@ export default function CreateApplicationDialog({
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || "Failed to create application");
+      const created = (await res.json().catch(() => null)) as AppRow | null;
+
+      if (!res.ok || !created) {
+        const msg =
+          (created as { error?: string } | null)?.error ??
+          "Failed to create application";
+        throw new Error(msg);
       }
 
+      addApp(created);
       closeAndReset();
-      router.refresh();
     } catch (e: unknown) {
       const message =
         e instanceof Error ? e.message : "Failed to create application.";
@@ -337,9 +338,7 @@ export default function CreateApplicationDialog({
                 ref={companyRef}
                 value={company}
                 onChange={(e) => {
-                  const nextCompany = e.target.value;
-                  setCompany(nextCompany);
-
+                  setCompany(e.target.value);
                   if (source.trim() === "") {
                     setSource("LinkedIn");
                   }
