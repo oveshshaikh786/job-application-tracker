@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApplicationStage {
+  DRAFT
+  APPLIED
+  RECRUITER_SCREEN
+  TECH_SCREEN
+  ONSITE
+  OFFER
+  REJECTED
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum EventType {
+  CREATED
+  STAGE_CHANGED
+  NOTE_ADDED
+  FOLLOW_UP_SET
+  FOLLOW_UP_CLEARED
+  INTERVIEW_SCHEDULED
+  REJECTED
+  OFFERED
+  META_UPDATED
+}
+
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
+model User {
+  id            String            @id @default(cuid())
+  email         String            @unique
+  name          String?
+  image         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  memberships   WorkspaceMember[]
+}
+
+model Workspace {
+  id            String            @id @default(cuid())
+  name          String
+  slug          String            @unique
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  memberships   WorkspaceMember[]
+  companies     Company[]
+  roles         Role[]
+  applications  Application[]
+}
+
+model WorkspaceMember {
+  id            String         @id @default(cuid())
+  role          WorkspaceRole  @default(MEMBER)
+  createdAt     DateTime       @default(now())
+
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  workspaceId   String
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Company {
+  id            String      @id @default(uuid())
+  name          String
+  website       String?
+  location      String?
+  industry      String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  roles         Role[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model Role {
+  id            String      @id @default(uuid())
+  title         String
+  url           String?
+  location      String?
+  workType      String?
+  description   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  applications  Application[]
+
+  @@index([workspaceId])
+  @@index([companyId])
+}
+
+model Application {
+  id                String            @id @default(uuid())
+  stage             ApplicationStage  @default(DRAFT)
+  source            String?
+  appliedAt         DateTime?
+  nextActionAt      DateTime?
+  stageEnteredAt    DateTime          @default(now())
+
+  archivedAt        DateTime?
+  archivedFromStage ApplicationStage?
+
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  workspaceId       String
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  roleId            String
+  role              Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  events            ApplicationEvent[]
+
+  @@index([workspaceId])
+  @@index([stage])
+  @@index([roleId])
+  @@index([stageEnteredAt])
+  @@index([nextActionAt])
+}
+
+model ApplicationEvent {
+  id              String          @id @default(uuid())
+  type            EventType
+  message         String
+  createdAt       DateTime        @default(now())
+
+  applicationId   String
+  application     Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+}
