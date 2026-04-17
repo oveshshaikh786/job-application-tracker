@@ -549,17 +549,28 @@ export default function DashboardStats(props: DashboardStatsProps) {
     ? "repeat(2, minmax(0, 1fr))"
     : "repeat(auto-fit, minmax(160px, 1fr))";
 
-  const created7 = 0;
-  const created30 = 0;
-  const moves7 = 0;
-  const moves30 = 0;
-  const notes7 = 0;
-  const notes30 = 0;
+  const [analytics, setAnalytics] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then(setAnalytics)
+      .catch(() => setAnalytics(null));
+  }, []);
+
+  const created7 = analytics?.created7 ?? 0;
+  const created30 = analytics?.created30 ?? 0;
+  const moves7 = analytics?.moves7 ?? 0;
+  const moves30 = analytics?.moves30 ?? 0;
+  const notes7 = analytics?.notes7 ?? 0;
+  const notes30 = analytics?.notes30 ?? 0;
 
   const createdPerDay7 = created7 / 7;
   const createdPerDay30 = created30 / 30;
+
   const movesPerDay7 = moves7 / 7;
   const movesPerDay30 = moves30 / 30;
+
   const notesPerDay7 = notes7 / 7;
   const notesPerDay30 = notes30 / 30;
 
