@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import type { Application, Stage } from "@/domain/application/types";
 
 export default function ArchivedList({
@@ -9,7 +8,6 @@ export default function ArchivedList({
 }: {
   initialApps: Application[];
 }) {
-  const router = useRouter();
   const [apps, setApps] = useState<Application[]>(initialApps);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
@@ -39,7 +37,6 @@ export default function ArchivedList({
       }
 
       setApps((prev) => prev.filter((a) => a.id !== app.id));
-      router.refresh();
     } finally {
       setBusy(app.id, false);
     }
@@ -62,7 +59,6 @@ export default function ArchivedList({
       }
 
       setApps((prev) => prev.filter((a) => a.id !== id));
-      router.refresh();
     } finally {
       setBusy(id, false);
     }
@@ -113,7 +109,7 @@ export default function ArchivedList({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => restoreApp(app)}
+                onClick={() => void restoreApp(app)}
                 className="btn"
                 style={{ opacity: busy ? 0.6 : 1 }}
               >
@@ -123,7 +119,7 @@ export default function ArchivedList({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => deleteApp(app.id)}
+                onClick={() => void deleteApp(app.id)}
                 className="btn btn-danger"
                 style={{ opacity: busy ? 0.6 : 1 }}
               >

@@ -46,7 +46,7 @@ export default function NewApplicationForm() {
   }, []);
 
   const canSubmit = useMemo(() => {
-    return companyName.trim() && roleTitle.trim();
+    return companyName.trim() !== "" && roleTitle.trim() !== "";
   }, [companyName, roleTitle]);
 
   async function onSubmit(e?: React.FormEvent) {
@@ -75,7 +75,6 @@ export default function NewApplicationForm() {
       }
 
       router.push(`/dashboard/applications/${data.id}`);
-      router.refresh();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Unknown error");
     } finally {
