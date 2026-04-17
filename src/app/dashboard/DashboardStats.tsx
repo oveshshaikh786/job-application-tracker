@@ -12,11 +12,47 @@ import { getSlaInfo } from "@/domain/application/sla";
 import { toMs } from "@/domain/application/time";
 
 type StageUI = Exclude<Stage, "ARCHIVED">;
+type VelocityStage = "APPLIED" | "RECRUITER_SCREEN" | "TECH_SCREEN" | "ONSITE";
 
 type DashboardStatsProps = {
   title?: string;
   subtitle?: string;
   newHref?: string;
+};
+
+type QuickAddState = {
+  title: string;
+  company: string;
+  source: string;
+  stage: StageUI;
+  followUpPreset: "none" | "tomorrow" | "3d" | "7d";
+};
+
+type StageVelocityRow = {
+  avgDays: number;
+  count: number;
+  stuckRate: number;
+  stuckCount?: number;
+};
+
+type SourceBreakdownRow = {
+  source: string;
+  count: number;
+};
+
+type SourceConversionRow = {
+  source: string;
+  total: number;
+  applied: number;
+  recruiter: number;
+  tech: number;
+  onsite: number;
+  offer: number;
+  appliedToRecruiter: number;
+  recruiterToTech: number;
+  techToOnsite: number;
+  onsiteToOffer: number;
+  overall: number;
 };
 
 const STAGES: { key: StageUI; label: string }[] = [
@@ -29,14 +65,6 @@ const STAGES: { key: StageUI; label: string }[] = [
   { key: "REJECTED", label: "Rejected" },
   { key: "WITHDRAWN", label: "Withdrawn" },
 ];
-
-type QuickAddState = {
-  title: string;
-  company: string;
-  source: string;
-  stage: StageUI;
-  followUpPreset: "none" | "tomorrow" | "3d" | "7d";
-};
 
 const STAGE_ORDER_UI: StageUI[] = [
   "DRAFT",
@@ -86,16 +114,20 @@ function buildCreatePayload(state: QuickAddState) {
   };
 }
 
-function pct(n: number, d: number) {
-  if (!d) return "—";
-  const v = (n / d) * 100;
-  return v >= 10 ? `${Math.round(v)}%` : `${v.toFixed(1)}%`;
-}
-
 function safeRate(n: number, d: number) {
   if (!d) return "—";
   const v = n / d;
   return v >= 10 ? `${Math.round(v)}x` : `${v.toFixed(2)}x`;
+}
+
+function displayNumber(n: number | null | undefined, digits = 1) {
+  if (n == null || Number.isNaN(n)) return "—";
+  return n.toFixed(digits);
+}
+
+function displayPercent(n: number | null | undefined, digits = 1) {
+  if (n == null || Number.isNaN(n)) return "—";
+  return `${n.toFixed(digits)}%`;
 }
 
 function StatCard(props: {
@@ -328,32 +360,6 @@ function GhostButton(props: {
   );
 }
 
-function buildLocalFunnelRows(stageCounts: Record<StageUI, number>) {
-  const steps: { key: StageUI; label: string }[] = [
-    { key: "APPLIED", label: "Applied" },
-    { key: "RECRUITER_SCREEN", label: "Recruiter" },
-    { key: "TECH_SCREEN", label: "Tech" },
-    { key: "ONSITE", label: "Onsite" },
-    { key: "OFFER", label: "Offer" },
-  ];
-
-  return steps.map((s, idx) => {
-    const count = stageCounts[s.key] ?? 0;
-    const prevCount = idx === 0 ? 0 : (stageCounts[steps[idx - 1].key] ?? 0);
-
-    return {
-      key: s.key,
-      label: s.label,
-      count,
-      fromPrevPct: idx === 0 ? "—" : pct(count, prevCount),
-      dropPct:
-        idx === 0 || prevCount === 0
-          ? "—"
-          : `${Math.round(((prevCount - count) / prevCount) * 100)}%`,
-    };
-  });
-}
-
 export default function DashboardStats(props: DashboardStatsProps) {
   const apps = useApplicationsStore((s) => s.apps);
   const addApp = useApplicationsStore((s) => s.addApp);
@@ -496,10 +502,11 @@ export default function DashboardStats(props: DashboardStatsProps) {
   for (const a of activeApps) {
     const enteredAt = getEnteredStageAt(a);
     if (!enteredAt) continue;
-    const days = Math.floor((nowMs - enteredAt) / (24 * 60 * 60 * 1000));
+    const days = (nowMs - enteredAt) / (24 * 60 * 60 * 1000);
     sumStageDays += days;
     denom += 1;
   }
+
   const avgStageDays = denom === 0 ? null : sumStageDays / denom;
 
   const stageOrder = STAGE_ORDER_UI;
@@ -530,8 +537,6 @@ export default function DashboardStats(props: DashboardStatsProps) {
     stuckByStage[s] = (stuckByStage[s] ?? 0) + 1;
   }
 
-  const funnelRows = buildLocalFunnelRows(stageCounts);
-
   const archived = apps.filter((a) => a.stage === "ARCHIVED").length;
 
   const avgStageValue = useMemo(() => {
@@ -551,12 +556,22 @@ export default function DashboardStats(props: DashboardStatsProps) {
 
   const [analytics, setAnalytics] = useState<any>(null);
 
+  const analyticsRefreshKey = useMemo(
+    () =>
+      apps
+        .map(
+          (a) => `${a.id}:${a.stage}:${a.updatedAt}:${a.events?.length ?? 0}`,
+        )
+        .join("|"),
+    [apps],
+  );
+
   useEffect(() => {
     fetch("/api/stats")
       .then((r) => r.json())
       .then(setAnalytics)
       .catch(() => setAnalytics(null));
-  }, []);
+  }, [analyticsRefreshKey]);
 
   const created7 = analytics?.created7 ?? 0;
   const created30 = analytics?.created30 ?? 0;
@@ -577,6 +592,15 @@ export default function DashboardStats(props: DashboardStatsProps) {
   const creationTrend = safeRate(createdPerDay7, createdPerDay30);
   const moveTrend = safeRate(movesPerDay7, movesPerDay30);
   const noteTrend = safeRate(notesPerDay7, notesPerDay30);
+
+  const conversion = analytics?.conversion ?? {};
+  const stageVelocity = analytics?.stageVelocity ?? {};
+  const fastestStage = analytics?.fastestStage ?? null;
+  const slowestStage = analytics?.slowestStage ?? null;
+  const sourceBreakdown: SourceBreakdownRow[] =
+    analytics?.sourceBreakdown ?? [];
+  const sourceConversion: SourceConversionRow[] =
+    analytics?.sourceConversion ?? [];
 
   async function createQuick() {
     if (quickSaving) return;
@@ -809,23 +833,17 @@ export default function DashboardStats(props: DashboardStatsProps) {
             <MetricCard
               label="Created (last 7d)"
               primary={`${created7}`}
-              secondary={`${createdPerDay7.toFixed(
-                1,
-              )}/day • vs 30d: ${creationTrend}`}
+              secondary={`${displayNumber(createdPerDay7)}/day • vs 30d: ${creationTrend}`}
             />
             <MetricCard
               label="Stage moves (last 7d)"
               primary={`${moves7}`}
-              secondary={`${movesPerDay7.toFixed(
-                1,
-              )}/day • vs 30d: ${moveTrend}`}
+              secondary={`${displayNumber(movesPerDay7)}/day • vs 30d: ${moveTrend}`}
             />
             <MetricCard
               label="Notes (last 7d)"
               primary={`${notes7}`}
-              secondary={`${notesPerDay7.toFixed(
-                1,
-              )}/day • vs 30d: ${noteTrend}`}
+              secondary={`${displayNumber(notesPerDay7)}/day • vs 30d: ${noteTrend}`}
             />
           </div>
 
@@ -834,7 +852,7 @@ export default function DashboardStats(props: DashboardStatsProps) {
             {stageOrder.map((stage) => (
               <Pill
                 key={stage}
-                label={stageLabel[stage]}
+                label={STAGE_LABEL_UI[stage]}
                 value={stageCounts[stage] ?? 0}
               />
             ))}
@@ -867,9 +885,10 @@ export default function DashboardStats(props: DashboardStatsProps) {
           </div>
 
           <SectionHeader
-            title="Funnel"
-            hint="Based on current stage counts (not lifetime). Conversion + drop-off from previous step."
+            title="Conversion Funnel"
+            hint="Real conversion rates based on backend data"
           />
+
           <div
             style={{
               display: "grid",
@@ -879,16 +898,267 @@ export default function DashboardStats(props: DashboardStatsProps) {
                 : "repeat(auto-fit, minmax(180px, 1fr))",
             }}
           >
-            {funnelRows.map((row, idx) => (
-              <FunnelCard
-                key={row.key}
-                label={row.label}
-                count={row.count}
-                fromPrevPct={row.fromPrevPct}
-                dropPct={row.dropPct}
-                isFirst={idx === 0}
-              />
-            ))}
+            <FunnelCard
+              label="Applied → Recruiter"
+              count={stageCounts.RECRUITER_SCREEN}
+              fromPrevPct={displayPercent(conversion.appliedToRecruiter)}
+            />
+            <FunnelCard
+              label="Recruiter → Tech"
+              count={stageCounts.TECH_SCREEN}
+              fromPrevPct={displayPercent(conversion.recruiterToTech)}
+            />
+            <FunnelCard
+              label="Tech → Onsite"
+              count={stageCounts.ONSITE}
+              fromPrevPct={displayPercent(conversion.techToOnsite)}
+            />
+            <FunnelCard
+              label="Onsite → Offer"
+              count={stageCounts.OFFER}
+              fromPrevPct={displayPercent(conversion.onsiteToOffer)}
+            />
+            <FunnelCard
+              label="Overall"
+              count={stageCounts.OFFER}
+              fromPrevPct={displayPercent(conversion.overall)}
+            />
+          </div>
+
+          <SectionHeader
+            title="Stage Velocity"
+            hint="Avg time in stage + stuck rate"
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : "repeat(auto-fit, minmax(200px, 1fr))",
+            }}
+          >
+            {(
+              ["APPLIED", "RECRUITER_SCREEN", "TECH_SCREEN", "ONSITE"] as const
+            ).map((stage) => {
+              const row =
+                stageVelocity?.[stage] ??
+                ({
+                  avgDays: 0,
+                  count: 0,
+                  stuckRate: 0,
+                } satisfies StageVelocityRow);
+
+              return (
+                <div
+                  key={stage}
+                  className="panel-glass"
+                  style={{ padding: 12 }}
+                >
+                  <div style={{ fontWeight: 900 }}>{STAGE_LABEL_UI[stage]}</div>
+
+                  <div
+                    className="stat-value"
+                    style={{ fontSize: 20, marginTop: 6 }}
+                  >
+                    {row.count > 0 ? `${displayNumber(row.avgDays)}d` : "—"}
+                  </div>
+
+                  <div className="stat-hint" style={{ marginTop: 6 }}>
+                    {row.count} apps • stuck{" "}
+                    {row.count > 0 ? displayPercent(row.stuckRate, 0) : "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              display: "flex",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            {fastestStage ? (
+              <div className="pill pill-ok">
+                Fastest: {STAGE_LABEL_UI[fastestStage.key as VelocityStage]} (
+                {displayNumber(fastestStage.avgDays)}d)
+              </div>
+            ) : null}
+
+            {slowestStage ? (
+              <div className="pill pill-danger">
+                Slowest: {STAGE_LABEL_UI[slowestStage.key as VelocityStage]} (
+                {displayNumber(slowestStage.avgDays)}d)
+              </div>
+            ) : null}
+          </div>
+
+          <SectionHeader
+            title="Source Analytics"
+            hint="Where your applications are coming from"
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : "repeat(auto-fit, minmax(220px, 1fr))",
+            }}
+          >
+            <div className="panel-glass" style={{ padding: 12, minWidth: 0 }}>
+              <div style={{ fontWeight: 900 }}>Applications by source</div>
+
+              {sourceBreakdown.length === 0 ? (
+                <div
+                  className="text-muted"
+                  style={{ fontSize: 13, marginTop: 8 }}
+                >
+                  No source data yet.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                  {sourceBreakdown.map((row) => (
+                    <div
+                      key={row.source}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <div className="text-muted">{row.source}</div>
+                      <div className="data-val" style={{ fontWeight: 900 }}>
+                        {row.count}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <SectionHeader
+            title="Conversion by Source"
+            hint="Which sources actually move forward"
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : "repeat(auto-fit, minmax(280px, 1fr))",
+            }}
+          >
+            {sourceConversion.length === 0 ? (
+              <div className="panel-glass" style={{ padding: 12 }}>
+                <div className="text-muted" style={{ fontSize: 13 }}>
+                  No source conversion data yet.
+                </div>
+              </div>
+            ) : (
+              sourceConversion.map((row) => (
+                <div
+                  key={row.source}
+                  className="panel-glass"
+                  style={{ padding: 12, minWidth: 0 }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      alignItems: "baseline",
+                    }}
+                  >
+                    <div style={{ fontWeight: 900, minWidth: 0 }}>
+                      {row.source}
+                    </div>
+                    <div className="text-muted-2" style={{ fontSize: 12 }}>
+                      {row.total} apps
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      <div className="text-muted">Applied → Recruiter</div>
+                      <div className="data-val" style={{ fontWeight: 900 }}>
+                        {displayPercent(row.appliedToRecruiter)}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      <div className="text-muted">Recruiter → Tech</div>
+                      <div className="data-val" style={{ fontWeight: 900 }}>
+                        {displayPercent(row.recruiterToTech)}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      <div className="text-muted">Tech → Onsite</div>
+                      <div className="data-val" style={{ fontWeight: 900 }}>
+                        {displayPercent(row.techToOnsite)}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      <div className="text-muted">Onsite → Offer</div>
+                      <div className="data-val" style={{ fontWeight: 900 }}>
+                        {displayPercent(row.onsiteToOffer)}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        marginTop: 4,
+                        paddingTop: 8,
+                        borderTop: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div style={{ fontWeight: 900 }}>Overall</div>
+                      <div className="data-val" style={{ fontWeight: 900 }}>
+                        {displayPercent(row.overall)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       ) : null}
