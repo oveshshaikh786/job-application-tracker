@@ -1,36 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Application Tracker (SaaS-Ready)
 
-## Getting Started
+A production-grade job tracking system built with Next.js, Prisma, and PostgreSQL.
+Designed to simulate a real SaaS product with analytics, workflow automation, and scalable architecture.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Features
+
+### 📌 Application Management
+
+- Kanban-style job tracking (Draft → Offer)
+- Drag & drop stage updates
+- Bulk actions (move, archive, delete)
+- Timeline with notes & events
+
+### ⏱ Follow-up & SLA Tracking
+
+- Follow-up reminders with due/overdue states
+- SLA breach detection per stage
+- Visual indicators for urgency
+
+### 📊 Analytics Dashboard
+
+- Application velocity (7d / 30d)
+- Stage conversion funnel
+- Stage-wise performance breakdown
+- Risk insights (overdue / SLA breaches)
+
+### 📈 Source Intelligence
+
+- Applications by source (LinkedIn, Referral, etc.)
+- Conversion rate per source
+- Identify best-performing job channels
+
+### ⚡ Real-Time UX
+
+- Instant UI updates using Zustand
+- Optimistic updates (no page reloads)
+- Smooth interactions across dashboard
+
+### 🧱 Architecture
+
+- Workspace-based multi-tenant ready design
+- Clean API structure (Next.js App Router)
+- Prisma ORM with PostgreSQL
+- Domain-driven structure for scalability
+
+---
+
+## 🛠 Tech Stack
+
+- **Frontend:** Next.js (App Router), React, TypeScript
+- **State Management:** Zustand
+- **Backend:** Next.js API Routes
+- **Database:** PostgreSQL + Prisma ORM
+- **Styling:** Custom CSS (dark/light themes)
+- **Deployment (planned):** Vercel
+
+---
+
+## 📂 Project Structure
+
+```
+src/
+  app/
+    api/                # Backend routes
+    dashboard/          # UI pages
+  components/           # Reusable UI components
+  domain/               # Business logic (SLA, stages, etc.)
+  lib/                  # DB + helpers
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Environment Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env` file:
 
-## Learn More
+```env
+DATABASE_URL="your_postgres_connection_string"
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ▶️ Run Locally
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
+Open:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+http://localhost:3000
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🧪 Production Build
+
+```bash
+npm run build
+npm start
+```
+
+---
+
+## 📌 Roadmap
+
+- [x] Workspace-based architecture
+- [x] Kanban job tracking
+- [x] SLA + follow-up system
+- [x] Analytics dashboard
+- [x] Source analytics + conversion
+- [ ] Authentication (multi-user)
+- [ ] Role-based access control
+- [ ] Notifications / reminders
+- [ ] Deployment + live demo
+
+---
+
+## 💡 Purpose
+
+This project is built to simulate a **real-world SaaS product**, focusing on:
+
+- clean architecture
+- scalable backend design
+- production-ready UI/UX
+- meaningful analytics
+
+---
+
+## 👤 Author
+
+**Ovesh Shaikh**
+
+- LinkedIn: https://www.linkedin.com/in/oveshshaikh786/
+- GitHub: https://github.com/oveshshaikh786
+
+---
+
+## ⭐ Notes
+
+This is an actively evolving project focused on building strong backend + product engineering skills.
