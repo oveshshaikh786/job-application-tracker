@@ -101,7 +101,6 @@ export async function PATCH(
       await tx.applicationEvent.create({
         data: {
           applicationId: id,
-          workspaceId: WORKSPACE_ID,
           type: EventType.META_UPDATED,
           message: changes.join(" | "),
         },
