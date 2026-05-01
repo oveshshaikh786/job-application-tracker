@@ -1,146 +1,107 @@
-# Job Application Tracker (SaaS-Ready)
+# 📋 Job Application Tracker
 
-A production-grade job tracking system built with Next.js, Prisma, and PostgreSQL.
-Designed to simulate a real SaaS product with analytics, workflow automation, and scalable architecture.
+An AI-powered job tracking app with a Kanban board, SLA deadline tracking, and analytics dashboard. Built with TypeScript, Prisma, and PostgreSQL.
+
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+
+> 🚀 **Live Demo:** [job-tracker.vercel.app](https://your-demo-link.vercel.app) <!-- Replace with real link -->
 
 ---
 
-## 🚀 Features
+## ✨ Features
 
-### 📌 Application Management
-
-- Kanban-style job tracking (Draft → Offer)
-- Drag & drop stage updates
-- Bulk actions (move, archive, delete)
-- Timeline with notes & events
-
-### ⏱ Follow-up & SLA Tracking
-
-- Follow-up reminders with due/overdue states
-- SLA breach detection per stage
-- Visual indicators for urgency
-
-### 📊 Analytics Dashboard
-
-- Application velocity (7d / 30d)
-- Stage conversion funnel
-- Stage-wise performance breakdown
-- Risk insights (overdue / SLA breaches)
-
-### 📈 Source Intelligence
-
-- Applications by source (LinkedIn, Referral, etc.)
-- Conversion rate per source
-- Identify best-performing job channels
-
-### ⚡ Real-Time UX
-
-- Instant UI updates using Zustand
-- Optimistic updates (no page reloads)
-- Smooth interactions across dashboard
-
-### 🧱 Architecture
-
-- Workspace-based multi-tenant ready design
-- Clean API structure (Next.js App Router)
-- Prisma ORM with PostgreSQL
-- Domain-driven structure for scalability
+- 🗂 **Kanban Board** — drag-and-drop job cards across Applied → Interview → Offer → Rejected
+- ⏰ **SLA Tracking** — automatic deadline alerts for follow-ups
+- 📊 **Analytics Dashboard** — response rates, pipeline stats, stage conversion
+- 🤖 **AI Integration** — smart suggestions for follow-up timing and resume tips
+- 🔐 **Auth** — secure login with session management
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Frontend:** Next.js (App Router), React, TypeScript
-- **State Management:** Zustand
-- **Backend:** Next.js API Routes
-- **Database:** PostgreSQL + Prisma ORM
-- **Styling:** Custom CSS (dark/light themes)
-- **Deployment (planned):** Vercel
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js, React, TypeScript |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| Styling | Tailwind CSS |
+| Deployment | Vercel + Railway |
 
 ---
 
-## 📂 Project Structure
+## 🚀 Getting Started
 
+### Prerequisites
+- Node.js 18+
+- PostgreSQL
+
+### Installation
+
+```bash
+git clone https://github.com/oveshshaikh786/job-application-tracker.git
+cd job-application-tracker
+
+npm install
+
+cp .env.example .env
 ```
-src/
-  app/
-    api/                # Backend routes
-    dashboard/          # UI pages
-  components/           # Reusable UI components
-  domain/               # Business logic (SLA, stages, etc.)
-  lib/                  # DB + helpers
-```
 
----
-
-## ⚙️ Environment Setup
-
-Create a `.env` file:
+### Environment Variables
 
 ```env
-DATABASE_URL="your_postgres_connection_string"
+DATABASE_URL=postgresql://user:password@localhost:5432/jobtracker
+NEXTAUTH_SECRET=your_secret
+NEXTAUTH_URL=http://localhost:3000
+OPENAI_API_KEY=your_openai_key   # optional, for AI features
 ```
 
----
-
-## ▶️ Run Locally
+### Database Setup
 
 ```bash
-npm install
+npx prisma migrate dev
+npx prisma db seed    # optional seed data
+```
+
+### Run Locally
+
+```bash
 npm run dev
-```
-
-Open:
-
-```
-http://localhost:3000
+# Open http://localhost:3000
 ```
 
 ---
 
-## 🧪 Production Build
+## 📸 Screenshots
 
-```bash
-npm run build
-npm start
+> *(Add screenshots here)*
+
+---
+
+## 📁 Project Structure
+
+```
+├── app/              # Next.js app router
+├── components/       # UI components (Kanban, Charts)
+├── prisma/           # Schema & migrations
+├── lib/              # DB client, auth, utils
+└── types/            # TypeScript interfaces
 ```
 
 ---
 
-## 📌 Roadmap
+## 🔮 Planned Improvements
 
-- [x] Workspace-based architecture
-- [x] Kanban job tracking
-- [x] SLA + follow-up system
-- [x] Analytics dashboard
-- [x] Source analytics + conversion
-- [ ] Authentication (multi-user)
-- [ ] Role-based access control
-- [ ] Notifications / reminders
-- [ ] Deployment + live demo
-
----
-
-## 💡 Purpose
-
-This project is built to simulate a **real-world SaaS product**, focusing on:
-
-- clean architecture
-- scalable backend design
-- production-ready UI/UX
-- meaningful analytics
+- [ ] Resume parsing with AI
+- [ ] Email reminders
+- [ ] Chrome extension for 1-click job saving
+- [ ] Export to CSV
 
 ---
 
 ## 👤 Author
 
-**Ovesh Shaikh**
-
-- LinkedIn: https://www.linkedin.com/in/oveshshaikh786/
-- GitHub: https://github.com/oveshshaikh786
-
----
-
-## ⭐ Notes
-
-This is an actively evolving project focused on building strong backend + product engineering skills.
+**Ovesh Shaikh** · [LinkedIn](https://linkedin.com/in/oveshshaikh786) · [Portfolio](https://portfolio-ovesh.vercel.app)
