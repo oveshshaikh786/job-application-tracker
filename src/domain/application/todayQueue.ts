@@ -4,32 +4,46 @@ import { getFollowUpInfo } from "./followup";
 import { getSlaInfo } from "./sla";
 import { toMs } from "./time";
 
-export type TodayQueuePillKind = "overdue" | "due" | "stuck" | "sla";
+export type TodayQueuePillKind =
+  | "overdue"
+  | "due"
+  | "stuck"
+  | "sla"
+  | "ghosted";
 
 export type TodayQueueItem = {
   id: string;
   title: string;
   company: string;
   source: string;
+  stage: Application["stage"];
+  stageAgeDays: number;
   rightPill: { label: string; kind: TodayQueuePillKind };
 };
 
 export type TodayQueueBuckets = {
   overdue: TodayQueueItem[];
   due24h: TodayQueueItem[];
+  ghostedNoResponse: TodayQueueItem[];
   stuckNoFollowUp: TodayQueueItem[];
-  // NOTE: name kept for compatibility, but bucket may include items WITH follow-ups
   slaBreachedNoFollowUp: TodayQueueItem[];
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const GHOST_DAYS = 7;
 
-function toItem(app: Application, pill: TodayQueueItem["rightPill"]): TodayQueueItem {
+function toItem(
+  app: Application,
+  pill: TodayQueueItem["rightPill"],
+  stageAgeDays: number,
+): TodayQueueItem {
   return {
     id: app.id,
     title: app.role?.title ?? "Untitled",
     company: app.role?.company?.name ?? "Unknown company",
     source: app.source ?? "—",
+    stage: app.stage,
+    stageAgeDays,
     rightPill: pill,
   };
 }
@@ -42,8 +56,11 @@ function safeToMs(iso?: string | null) {
 
 function safeStageAgeDays(app: Application, nowMs: number) {
   const entered = getEnteredStageAt(app);
-  const enteredMs = entered ? entered : (safeToMs(app.updatedAt) ?? safeToMs(app.createdAt));
+  const enteredMs =
+    entered ?? safeToMs(app.updatedAt) ?? safeToMs(app.createdAt);
+
   if (!enteredMs) return 0;
+
   const d = Math.floor((nowMs - enteredMs) / DAY_MS);
   return Number.isFinite(d) && d > 0 ? d : 0;
 }
@@ -68,45 +85,56 @@ function stageWeight(stage: Application["stage"]): number {
 }
 
 type Ranked = { item: TodayQueueItem; score: number };
+
 function topSortDesc(a: Ranked, b: Ranked) {
   return b.score - a.score;
 }
 
-export function buildTodayQueue(apps: Application[], nowMs: number): TodayQueueBuckets {
+export function buildTodayQueue(
+  apps: Application[],
+  nowMs: number,
+): TodayQueueBuckets {
   const overdue: Ranked[] = [];
   const due24h: Ranked[] = [];
+  const ghostedNoResponse: Ranked[] = [];
   const stuckNoFollowUp: Ranked[] = [];
   const slaBreachedNoFollowUp: Ranked[] = [];
 
-  for (const a of apps) {
-    if (isClosed(a.stage)) continue;
+  for (const app of apps) {
+    if (isClosed(app.stage)) continue;
 
-    const follow = getFollowUpInfo(a, nowMs);
-    const sla = getSlaInfo(a, nowMs);
+    const follow = getFollowUpInfo(app, nowMs);
+    const sla = getSlaInfo(app, nowMs);
 
-    const sw = stageWeight(a.stage);
-    const stageAgeDays = safeStageAgeDays(a, nowMs);
+    const sw = stageWeight(app.stage);
+    const stageAgeDays = safeStageAgeDays(app, nowMs);
 
-    // 1) Overdue follow-up
     if (follow?.kind === "overdue") {
-      const dueMs = safeToMs(a.nextActionAt) ?? nowMs;
+      const dueMs = safeToMs(app.nextActionAt) ?? nowMs;
       const overdueMs = nowMs - dueMs;
 
       overdue.push({
-        item: toItem(a, { kind: "overdue", label: follow.label }),
+        item: toItem(
+          app,
+          { kind: "overdue", label: follow.label },
+          stageAgeDays,
+        ),
         score: overdueMs / 60_000 + sw * 1000,
       });
       continue;
     }
 
-    // 2) Due within 24h (must be future)
     if (follow?.kind === "due") {
-      const dueMs = safeToMs(a.nextActionAt);
+      const dueMs = safeToMs(app.nextActionAt);
       if (dueMs) {
         const diff = dueMs - nowMs;
         if (diff > 0 && diff <= DAY_MS) {
           due24h.push({
-            item: toItem(a, { kind: "due", label: follow.label }),
+            item: toItem(
+              app,
+              { kind: "due", label: follow.label },
+              stageAgeDays,
+            ),
             score: (DAY_MS - diff) / 60_000 + sw * 1000,
           });
           continue;
@@ -114,7 +142,25 @@ export function buildTodayQueue(apps: Application[], nowMs: number): TodayQueueB
       }
     }
 
-    // 3) SLA breached (show even if follow-up exists, unless it was due soon/overdue above)
+    if (
+      app.stage === "APPLIED" &&
+      !app.nextActionAt &&
+      stageAgeDays >= GHOST_DAYS
+    ) {
+      ghostedNoResponse.push({
+        item: toItem(
+          app,
+          {
+            kind: "ghosted",
+            label: `No response • ${stageAgeDays}d`,
+          },
+          stageAgeDays,
+        ),
+        score: stageAgeDays * 12_000 + sw * 1000,
+      });
+      continue;
+    }
+
     if (sla?.breached) {
       const days =
         typeof sla.daysInt === "number" && Number.isFinite(sla.daysInt)
@@ -122,19 +168,23 @@ export function buildTodayQueue(apps: Application[], nowMs: number): TodayQueueB
           : stageAgeDays;
 
       const labelBase = days > 0 ? `SLA breached • ${days}d` : "SLA breached";
-      const label = follow?.kind === "due" ? `${labelBase} • ${follow.label}` : labelBase;
+      const label =
+        follow?.kind === "due" ? `${labelBase} • ${follow.label}` : labelBase;
 
       slaBreachedNoFollowUp.push({
-        item: toItem(a, { kind: "sla", label }),
+        item: toItem(app, { kind: "sla", label }, stageAgeDays),
         score: days * 10_000 + sw * 1000,
       });
       continue;
     }
 
-    // 4) Stuck (ONLY if no follow-up)
-    if (!a.nextActionAt && stageAgeDays >= 7) {
+    if (!app.nextActionAt && stageAgeDays >= 7) {
       stuckNoFollowUp.push({
-        item: toItem(a, { kind: "stuck", label: `Stuck • ${stageAgeDays}d` }),
+        item: toItem(
+          app,
+          { kind: "stuck", label: `Stuck • ${stageAgeDays}d` },
+          stageAgeDays,
+        ),
         score: stageAgeDays * 5_000 + sw * 1000,
       });
       continue;
@@ -143,12 +193,14 @@ export function buildTodayQueue(apps: Application[], nowMs: number): TodayQueueB
 
   overdue.sort(topSortDesc);
   due24h.sort(topSortDesc);
+  ghostedNoResponse.sort(topSortDesc);
   slaBreachedNoFollowUp.sort(topSortDesc);
   stuckNoFollowUp.sort(topSortDesc);
 
   return {
     overdue: overdue.map((x) => x.item),
     due24h: due24h.map((x) => x.item),
+    ghostedNoResponse: ghostedNoResponse.map((x) => x.item),
     stuckNoFollowUp: stuckNoFollowUp.map((x) => x.item),
     slaBreachedNoFollowUp: slaBreachedNoFollowUp.map((x) => x.item),
   };

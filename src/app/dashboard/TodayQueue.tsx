@@ -69,6 +69,7 @@ function isoIn(msFromNow: number) {
 
 function pillClass(kind: TodayQueueItem["rightPill"]["kind"]) {
   if (kind === "overdue") return "pill pill-danger";
+  if (kind === "ghosted") return "pill pill-danger";
   if (kind === "stuck") return "pill pill-warn";
   if (kind === "sla") return "pill pill-critical";
   return "pill pill-default";
@@ -127,9 +128,7 @@ function ActionBtn({
       className={className}
       onClick={onClick}
       disabled={disabled}
-      style={{
-        padding: "8px 12px",
-      }}
+      style={{ padding: "8px 12px" }}
     >
       {label}
     </button>
@@ -228,6 +227,7 @@ function computeAtsScore(args: {
   daysSinceTouch: number;
   starred?: boolean;
   nowMs: number;
+  isGhosted?: boolean;
 }): AtsResult {
   const {
     stage,
@@ -238,6 +238,7 @@ function computeAtsScore(args: {
     daysSinceTouch,
     starred,
     nowMs,
+    isGhosted,
   } = args;
 
   const impact = IMPACT_BY_STAGE[stage] * sourceMultiplier(source);
@@ -259,12 +260,14 @@ function computeAtsScore(args: {
   const boosts =
     (starred ? 30 : 0) +
     (followUpOverdue ? 20 : 0) +
-    (daysPastSla > 0 ? 25 : 0);
+    (daysPastSla > 0 ? 25 : 0) +
+    (isGhosted ? 22 : 0);
 
   const raw = impact * urgency * probability - cost + boosts;
 
   const reasons: string[] = [];
   if (followUpOverdue) reasons.push("Follow-up overdue");
+  if (isGhosted) reasons.push("Likely ghosted / no response");
   if (daysPastSla > 0) reasons.push(`SLA breached (+${daysPastSla}d)`);
   reasons.push(`Stage: ${stage}`);
   reasons.push(`In stage: ${daysInStage}d`);
@@ -297,7 +300,7 @@ export default function TodayQueue() {
     async (id: string, nextActionAt: string | null) => {
       markSaving(id, true);
       try {
-        const res = await fetch(`/api/applications/${id}`, {
+        const res = await fetch(`/api/applications/${id}/followup`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nextActionAt }),
@@ -367,15 +370,15 @@ export default function TodayQueue() {
 
   const appById = useMemo(() => {
     const m = new Map<string, Application>();
-    for (const a of apps) m.set(String((a as any).id), a);
+    for (const a of apps) m.set(String(a.id), a);
     return m;
   }, [apps]);
 
   function getStage(it: TodayQueueItem): Stage {
-    const s = (it as any).stage as Stage | undefined;
-    if (s) return s;
+    const stage = it.stage as Stage | undefined;
+    if (stage) return stage;
 
-    const app = appById.get(it.id) as any;
+    const app = appById.get(it.id);
     const appStage = app?.stage as Stage | undefined;
     if (appStage) return appStage;
 
@@ -383,24 +386,20 @@ export default function TodayQueue() {
   }
 
   function getDates(it: TodayQueueItem) {
-    const app = appById.get(it.id) as any;
+    const app = appById.get(it.id) as
+      | (Application & {
+          lastContactAt?: string | null;
+          starred?: boolean;
+          isStarred?: boolean;
+        })
+      | undefined;
 
-    const createdAt: string | null =
-      app?.createdAt ?? app?.created_at ?? app?.created ?? null;
-
-    const updatedAt: string | null =
-      app?.updatedAt ?? app?.updated_at ?? app?.updated ?? null;
-
-    const stageEnteredAt: string | null =
-      app?.stageEnteredAt ?? app?.stage_entered_at ?? null;
-
-    const lastContactAt: string | null =
-      app?.lastContactAt ?? app?.last_contact_at ?? null;
-
-    const nextActionAt: string | null =
-      app?.nextActionAt ?? app?.next_action_at ?? null;
-
-    const starred: boolean = Boolean(app?.starred ?? app?.isStarred ?? false);
+    const createdAt = app?.createdAt ?? null;
+    const updatedAt = app?.updatedAt ?? null;
+    const stageEnteredAt = app?.stageEnteredAt ?? null;
+    const lastContactAt = app?.lastContactAt ?? null;
+    const nextActionAt = app?.nextActionAt ?? null;
+    const starred = Boolean(app?.starred ?? app?.isStarred ?? false);
 
     return {
       createdAt,
@@ -442,6 +441,7 @@ export default function TodayQueue() {
     } = getDates(it);
 
     const daysInStage =
+      it.stageAgeDays ??
       parseDaysFromLabel(it.rightPill.label ?? "") ??
       (() => {
         const base = stageEnteredAt ?? updatedAt ?? createdAt ?? null;
@@ -468,6 +468,7 @@ export default function TodayQueue() {
       daysSinceTouch,
       starred,
       nowMs,
+      isGhosted: it.rightPill.kind === "ghosted",
     });
   }
 
@@ -480,9 +481,15 @@ export default function TodayQueue() {
         items: buckets.overdue,
       },
       {
+        key: "ghosted" as const,
+        title: "Ghosted / No Response",
+        hint: "Applied 7+ days with no follow-up set",
+        items: buckets.ghostedNoResponse,
+      },
+      {
         key: "sla" as const,
         title: "SLA breached",
-        hint: "Past your stage SLA, no follow-up set",
+        hint: "Past your stage SLA",
         items: buckets.slaBreachedNoFollowUp,
       },
       {
@@ -549,7 +556,7 @@ export default function TodayQueue() {
   }
 
   function primaryFor(kind: TodayQueueItem["rightPill"]["kind"]) {
-    if (kind === "overdue" || kind === "sla") {
+    if (kind === "overdue" || kind === "sla" || kind === "ghosted") {
       return { label: "Follow up today", fn: actions.followUpToday };
     }
     if (kind === "stuck") {

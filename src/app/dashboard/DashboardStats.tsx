@@ -69,6 +69,22 @@ type OutcomeBySourceRow = {
   closedRate: number;
 };
 
+type GhostedBySourceRow = {
+  source: string;
+  total: number;
+  ghosted: number;
+  ghostRate: number;
+};
+
+type OldestGhostedRow = {
+  id: string;
+  title: string;
+  company: string;
+  source: string;
+  stage: string;
+  ageDays: number;
+};
+
 const STAGES: { key: StageUI; label: string }[] = [
   { key: "DRAFT", label: "Draft" },
   { key: "APPLIED", label: "Applied" },
@@ -391,6 +407,95 @@ function OutcomeSourceCard({ row }: { row: OutcomeBySourceRow }) {
   );
 }
 
+function GhostedSourceCard({ row }: { row: GhostedBySourceRow }) {
+  return (
+    <div className="panel-glass" style={{ padding: 12, minWidth: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "baseline",
+        }}
+      >
+        <div style={{ fontWeight: 900, minWidth: 0 }}>{row.source}</div>
+        <div className="text-muted-2" style={{ fontSize: 12 }}>
+          {row.total} apps
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div className="text-muted">Likely ghosted</div>
+          <div className="data-val" style={{ fontWeight: 900 }}>
+            {row.ghosted}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            marginTop: 4,
+            paddingTop: 8,
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <div style={{ fontWeight: 900 }}>Ghost rate</div>
+          <div className="data-val" style={{ fontWeight: 900 }}>
+            {displayPercent(row.ghostRate)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OldestGhostedCard({ row }: { row: OldestGhostedRow }) {
+  return (
+    <Link
+      href={`/dashboard/applications/${row.id}`}
+      className="panel-glass"
+      style={{
+        padding: 12,
+        minWidth: 0,
+        textDecoration: "none",
+        color: "inherit",
+        display: "block",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "baseline",
+        }}
+      >
+        <div style={{ fontWeight: 900, minWidth: 0 }}>{row.title}</div>
+        <div className="pill pill-danger" style={{ whiteSpace: "nowrap" }}>
+          {row.ageDays}d
+        </div>
+      </div>
+
+      <div className="text-muted" style={{ fontSize: 13, marginTop: 6 }}>
+        {row.company}
+      </div>
+
+      <div className="text-muted-2" style={{ fontSize: 12, marginTop: 6 }}>
+        {row.source} • {row.stage}
+      </div>
+    </Link>
+  );
+}
+
 function PrimaryButton(props: {
   children: React.ReactNode;
   onClick?: () => void;
@@ -705,6 +810,14 @@ export default function DashboardStats(props: DashboardStatsProps) {
     analytics?.sourceConversion ?? [];
   const outcomeBySource: OutcomeBySourceRow[] =
     analytics?.outcomeBySource ?? [];
+  const ghosted = analytics?.ghosted ?? 0;
+  const ghostedRate = analytics?.ghostedRate ?? 0;
+  const ghostThresholdDays = analytics?.ghostThresholdDays ?? 7;
+
+  const ghostedBySource: GhostedBySourceRow[] =
+    analytics?.ghostedBySource ?? [];
+
+  const oldestGhosted: OldestGhostedRow[] = analytics?.oldestGhosted ?? [];
 
   async function createQuick() {
     if (quickSaving) return;
@@ -1334,6 +1447,87 @@ export default function DashboardStats(props: DashboardStatsProps) {
           </div>
         </div>
       ) : null}
+
+      <SectionHeader
+        title="Ghosted / No Response"
+        hint={`Applied ${ghostThresholdDays}+ days with no follow-up set`}
+      />
+
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: isMobile
+            ? "1fr"
+            : "repeat(auto-fit, minmax(220px, 1fr))",
+        }}
+      >
+        <MetricCard
+          label="Likely Ghosted"
+          primary={`${ghosted}`}
+          secondary={`${displayPercent(ghostedRate)} of active pipeline`}
+        />
+
+        <MetricCard
+          label="Ghost Threshold"
+          primary={`${ghostThresholdDays}d`}
+          secondary="Applied stage + no follow-up"
+        />
+      </div>
+
+      <SectionHeader
+        title="Ghosted by Source"
+        hint="Sources where applications are going cold"
+      />
+
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: isMobile
+            ? "1fr"
+            : "repeat(auto-fit, minmax(280px, 1fr))",
+        }}
+      >
+        {ghostedBySource.length === 0 ? (
+          <div className="panel-glass" style={{ padding: 12 }}>
+            <div className="text-muted" style={{ fontSize: 13 }}>
+              No ghosted applications yet.
+            </div>
+          </div>
+        ) : (
+          ghostedBySource.map((row) => (
+            <GhostedSourceCard key={row.source} row={row} />
+          ))
+        )}
+      </div>
+
+      <SectionHeader
+        title="Oldest No-Response Applications"
+        hint="Click any card to inspect or follow up"
+      />
+
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: isMobile
+            ? "1fr"
+            : "repeat(auto-fit, minmax(280px, 1fr))",
+        }}
+      >
+        {oldestGhosted.length === 0 ? (
+          <div className="panel-glass" style={{ padding: 12 }}>
+            <div className="text-muted" style={{ fontSize: 13 }}>
+              No old no-response applications.
+            </div>
+          </div>
+        ) : (
+          oldestGhosted.map((row) => (
+            <OldestGhostedCard key={row.id} row={row} />
+          ))
+        )}
+      </div>
 
       {quickOpen ? (
         <div

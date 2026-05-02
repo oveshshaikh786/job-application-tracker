@@ -23,6 +23,7 @@ type EventType =
   | "STAGE_CHANGED"
   | "NOTE_ADDED"
   | "FOLLOW_UP_SET"
+  | "FOLLOW_UP_CLEARED"
   | "INTERVIEW_SCHEDULED"
   | "REJECTED"
   | "OFFERED"
@@ -86,9 +87,20 @@ function normalizeSource(source: string | null | undefined) {
   return raw === "" ? "Unknown" : raw;
 }
 
+function labelForStage(stage: Stage) {
+  return stage
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 export async function GET() {
   const workspaceId = DEFAULT_WORKSPACE_ID;
   const nowMs = Date.now();
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const GHOST_DAYS = 7;
 
   const d7Ms = daysAgo(7).getTime();
   const d30Ms = daysAgo(30).getTime();
@@ -182,7 +194,7 @@ export async function GET() {
     if (!a.nextActionAt) return false;
 
     const diff = toMs(a.nextActionAt) - nowMs;
-    return diff >= 0 && diff <= 24 * 60 * 60 * 1000;
+    return diff >= 0 && diff <= DAY_MS;
   }).length;
 
   const dueIn7d = activeApps.filter((a) => {
@@ -191,7 +203,7 @@ export async function GET() {
     if (!a.nextActionAt) return false;
 
     const diff = toMs(a.nextActionAt) - nowMs;
-    return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+    return diff >= 0 && diff <= 7 * DAY_MS;
   }).length;
 
   const slaBreachedApps = activeApps.filter((a) => {
@@ -201,6 +213,87 @@ export async function GET() {
 
   const stuck = slaBreachedApps.length;
 
+  const ghostedApps = activeApps
+    .map((app) => {
+      const enteredAt = getEnteredStageAt(app);
+      const stageAgeDays = enteredAt
+        ? Math.max(0, (nowMs - enteredAt) / DAY_MS)
+        : 0;
+
+      return {
+        app,
+        stageAgeDays,
+      };
+    })
+    .filter(({ app, stageAgeDays }) => {
+      return (
+        app.stage === "APPLIED" &&
+        !app.nextActionAt &&
+        stageAgeDays >= GHOST_DAYS
+      );
+    });
+
+  const ghosted = ghostedApps.length;
+  const ghostedRate = rate(ghosted, active);
+
+  const ghostedBySourceMap: Record<
+    string,
+    { source: string; total: number; ghosted: number }
+  > = {};
+
+  for (const app of nonArchivedApps) {
+    const source = normalizeSource(app.source);
+
+    if (!ghostedBySourceMap[source]) {
+      ghostedBySourceMap[source] = {
+        source,
+        total: 0,
+        ghosted: 0,
+      };
+    }
+
+    ghostedBySourceMap[source].total += 1;
+  }
+
+  for (const { app } of ghostedApps) {
+    const source = normalizeSource(app.source);
+
+    if (!ghostedBySourceMap[source]) {
+      ghostedBySourceMap[source] = {
+        source,
+        total: 0,
+        ghosted: 0,
+      };
+    }
+
+    ghostedBySourceMap[source].ghosted += 1;
+  }
+
+  const ghostedBySource = Object.values(ghostedBySourceMap)
+    .filter((row) => row.ghosted > 0)
+    .map((row) => ({
+      source: row.source,
+      total: row.total,
+      ghosted: row.ghosted,
+      ghostRate: rate(row.ghosted, row.total),
+    }))
+    .sort((a, b) => {
+      if (b.ghostRate !== a.ghostRate) return b.ghostRate - a.ghostRate;
+      return b.ghosted - a.ghosted;
+    });
+
+  const oldestGhosted = ghostedApps
+    .map(({ app, stageAgeDays }) => ({
+      id: app.id,
+      title: app.role?.title ?? "Untitled",
+      company: app.role?.company?.name ?? "Unknown company",
+      source: normalizeSource(app.source),
+      stage: labelForStage(app.stage),
+      ageDays: Math.floor(stageAgeDays),
+    }))
+    .sort((a, b) => b.ageDays - a.ageDays)
+    .slice(0, 8);
+
   let sumStageDays = 0;
   let avgStageDenom = 0;
 
@@ -208,7 +301,7 @@ export async function GET() {
     const enteredAt = getEnteredStageAt(app);
     if (!enteredAt) continue;
 
-    const days = (nowMs - enteredAt) / (24 * 60 * 60 * 1000);
+    const days = (nowMs - enteredAt) / DAY_MS;
     sumStageDays += Math.max(0, days);
     avgStageDenom += 1;
   }
@@ -284,7 +377,7 @@ export async function GET() {
     const enteredAt = getEnteredStageAt(app);
     if (!enteredAt) continue;
 
-    const days = (nowMs - enteredAt) / (24 * 60 * 60 * 1000);
+    const days = (nowMs - enteredAt) / DAY_MS;
     velocityAcc[stage].totalDays += Math.max(0, days);
     velocityAcc[stage].count += 1;
 
@@ -474,6 +567,11 @@ export async function GET() {
     closedRate,
     overdue,
     stuck,
+    ghosted,
+    ghostedRate,
+    ghostThresholdDays: GHOST_DAYS,
+    ghostedBySource,
+    oldestGhosted,
     avgStageDays,
     dueIn24h,
     dueIn7d,
