@@ -9,31 +9,67 @@ export type Stage =
   | "WITHDRAWN"
   | "ARCHIVED";
 
-export type EventRow = {
-  type: string;
-  createdAt: string; // ISO
-  message?: string | null;
+export type EventType =
+  | "CREATED"
+  | "STAGE_CHANGED"
+  | "NOTE_ADDED"
+  | "FOLLOW_UP_SET"
+  | "FOLLOW_UP_CLEARED"
+  | "INTERVIEW_SCHEDULED"
+  | "REJECTED"
+  | "OFFERED"
+  | "META_UPDATED";
+
+export type ApplicationEvent = {
+  id?: string;
+  type: EventType;
+  message: string;
+  createdAt: string;
+};
+
+export type EventRow = ApplicationEvent;
+
+export type Company = {
+  id?: string;
+  name: string | null;
+  website?: string | null;
+  location?: string | null;
+  industry?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type Role = {
+  id?: string;
+  title: string | null;
+  url?: string | null;
+  location?: string | null;
+  workType?: string | null;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  companyId?: string;
+  company?: Company | null;
 };
 
 export type Application = {
   id: string;
   stage: Stage;
   source?: string | null;
-  updatedAt?: string;
-  createdAt?: string;
+  appliedAt?: string | null;
   nextActionAt?: string | null;
-
-  // ✅ source-of-truth for time in stage
   stageEnteredAt?: string | null;
 
-  // ✅ archive metadata
   archivedAt?: string | null;
   archivedFromStage?: Stage | null;
 
-  role?: {
-    title?: string | null;
-    company?: { name?: string | null } | null;
-  } | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt?: string;
 
-  events?: EventRow[];
+  workspaceId?: string;
+  roleId?: string;
+  role?: Role | null;
+
+  events?: ApplicationEvent[];
 };
