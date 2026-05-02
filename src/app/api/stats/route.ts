@@ -151,6 +151,19 @@ export async function GET() {
   const total = nonArchivedApps.length;
   const active = activeApps.length;
 
+  const rejected = nonArchivedApps.filter((a) => a.stage === "REJECTED").length;
+  const withdrawn = nonArchivedApps.filter(
+    (a) => a.stage === "WITHDRAWN",
+  ).length;
+  const offers = nonArchivedApps.filter((a) => a.stage === "OFFER").length;
+  const closed = rejected + withdrawn + offers;
+
+  const rejectionRate = rate(rejected, total);
+  const withdrawnRate = rate(withdrawn, total);
+  const offerRate = rate(offers, total);
+  const activeRate = rate(active, total);
+  const closedRate = rate(closed, total);
+
   const created7 = nonArchivedApps.filter(
     (a) => new Date(a.createdAt).getTime() >= d7Ms,
   ).length;
@@ -368,6 +381,8 @@ export async function GET() {
       tech: number;
       onsite: number;
       offer: number;
+      rejected: number;
+      withdrawn: number;
     }
   > = {};
 
@@ -381,6 +396,8 @@ export async function GET() {
         tech: 0,
         onsite: 0,
         offer: 0,
+        rejected: 0,
+        withdrawn: 0,
       };
     }
 
@@ -391,6 +408,8 @@ export async function GET() {
     if (app.stage === "TECH_SCREEN") sourceAcc[source].tech += 1;
     if (app.stage === "ONSITE") sourceAcc[source].onsite += 1;
     if (app.stage === "OFFER") sourceAcc[source].offer += 1;
+    if (app.stage === "REJECTED") sourceAcc[source].rejected += 1;
+    if (app.stage === "WITHDRAWN") sourceAcc[source].withdrawn += 1;
   }
 
   const sourceConversion: SourceConversionRow[] = Object.entries(sourceAcc)
@@ -416,9 +435,43 @@ export async function GET() {
       return b.total - a.total;
     });
 
+  const outcomeBySource = Object.entries(sourceAcc)
+    .map(([source, row]) => {
+      const sourceClosed = row.rejected + row.withdrawn + row.offer;
+
+      return {
+        source,
+        total: row.total,
+        active: row.total - sourceClosed,
+        closed: sourceClosed,
+        rejected: row.rejected,
+        withdrawn: row.withdrawn,
+        offers: row.offer,
+        rejectionRate: rate(row.rejected, row.total),
+        withdrawnRate: rate(row.withdrawn, row.total),
+        offerRate: rate(row.offer, row.total),
+        closedRate: rate(sourceClosed, row.total),
+      };
+    })
+    .sort((a, b) => {
+      if (b.rejectionRate !== a.rejectionRate) {
+        return b.rejectionRate - a.rejectionRate;
+      }
+      return b.total - a.total;
+    });
+
   return NextResponse.json({
     total,
     active,
+    rejected,
+    withdrawn,
+    offers,
+    closed,
+    rejectionRate,
+    withdrawnRate,
+    offerRate,
+    activeRate,
+    closedRate,
     overdue,
     stuck,
     avgStageDays,
@@ -446,5 +499,6 @@ export async function GET() {
       : null,
     sourceBreakdown,
     sourceConversion,
+    outcomeBySource,
   });
 }

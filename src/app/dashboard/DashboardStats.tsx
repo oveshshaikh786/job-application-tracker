@@ -55,6 +55,20 @@ type SourceConversionRow = {
   overall: number;
 };
 
+type OutcomeBySourceRow = {
+  source: string;
+  total: number;
+  active: number;
+  closed: number;
+  rejected: number;
+  withdrawn: number;
+  offers: number;
+  rejectionRate: number;
+  withdrawnRate: number;
+  offerRate: number;
+  closedRate: number;
+};
+
 const STAGES: { key: StageUI; label: string }[] = [
   { key: "DRAFT", label: "Draft" },
   { key: "APPLIED", label: "Applied" },
@@ -296,6 +310,83 @@ function BreakdownTable({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function OutcomeSourceCard({ row }: { row: OutcomeBySourceRow }) {
+  return (
+    <div className="panel-glass" style={{ padding: 12, minWidth: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "baseline",
+        }}
+      >
+        <div style={{ fontWeight: 900, minWidth: 0 }}>{row.source}</div>
+        <div className="text-muted-2" style={{ fontSize: 12 }}>
+          {row.total} apps
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div className="text-muted">Rejected</div>
+          <div className="data-val" style={{ fontWeight: 900 }}>
+            {row.rejected} • {displayPercent(row.rejectionRate)}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div className="text-muted">Offers</div>
+          <div className="data-val" style={{ fontWeight: 900 }}>
+            {row.offers} • {displayPercent(row.offerRate)}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div className="text-muted">Withdrawn</div>
+          <div className="data-val" style={{ fontWeight: 900 }}>
+            {row.withdrawn} • {displayPercent(row.withdrawnRate)}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            marginTop: 4,
+            paddingTop: 8,
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <div style={{ fontWeight: 900 }}>Closed</div>
+          <div className="data-val" style={{ fontWeight: 900 }}>
+            {row.closed} • {displayPercent(row.closedRate)}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -580,6 +671,17 @@ export default function DashboardStats(props: DashboardStatsProps) {
   const notes7 = analytics?.notes7 ?? 0;
   const notes30 = analytics?.notes30 ?? 0;
 
+  const rejected = analytics?.rejected ?? 0;
+  const withdrawn = analytics?.withdrawn ?? 0;
+  const offers = analytics?.offers ?? 0;
+  const closed = analytics?.closed ?? 0;
+
+  const rejectionRate = analytics?.rejectionRate ?? 0;
+  const withdrawnRate = analytics?.withdrawnRate ?? 0;
+  const offerRate = analytics?.offerRate ?? 0;
+  const activeRate = analytics?.activeRate ?? 0;
+  const closedRate = analytics?.closedRate ?? 0;
+
   const createdPerDay7 = created7 / 7;
   const createdPerDay30 = created30 / 30;
 
@@ -601,6 +703,8 @@ export default function DashboardStats(props: DashboardStatsProps) {
     analytics?.sourceBreakdown ?? [];
   const sourceConversion: SourceConversionRow[] =
     analytics?.sourceConversion ?? [];
+  const outcomeBySource: OutcomeBySourceRow[] =
+    analytics?.outcomeBySource ?? [];
 
   async function createQuick() {
     if (quickSaving) return;
@@ -885,6 +989,47 @@ export default function DashboardStats(props: DashboardStatsProps) {
           </div>
 
           <SectionHeader
+            title="Outcome Analytics"
+            hint="Rejected, withdrawn, offers, and pipeline health"
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : "repeat(auto-fit, minmax(220px, 1fr))",
+            }}
+          >
+            <MetricCard
+              label="Rejected"
+              primary={`${rejected}`}
+              secondary={`${displayPercent(rejectionRate)} of total`}
+            />
+            <MetricCard
+              label="Withdrawn"
+              primary={`${withdrawn}`}
+              secondary={`${displayPercent(withdrawnRate)} of total`}
+            />
+            <MetricCard
+              label="Offers"
+              primary={`${offers}`}
+              secondary={`${displayPercent(offerRate)} success rate`}
+            />
+            <MetricCard
+              label="Closed"
+              primary={`${closed}`}
+              secondary={`${displayPercent(closedRate)} closed pipeline`}
+            />
+            <MetricCard
+              label="Active Pipeline"
+              primary={`${active}`}
+              secondary={`${displayPercent(activeRate)} still in progress`}
+            />
+          </div>
+
+          <SectionHeader
             title="Conversion Funnel"
             hint="Real conversion rates based on backend data"
           />
@@ -1157,6 +1302,33 @@ export default function DashboardStats(props: DashboardStatsProps) {
                     </div>
                   </div>
                 </div>
+              ))
+            )}
+          </div>
+
+          <SectionHeader
+            title="Outcome by Source"
+            hint="Which sources lead to rejection, offers, or closed outcomes"
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : "repeat(auto-fit, minmax(280px, 1fr))",
+            }}
+          >
+            {outcomeBySource.length === 0 ? (
+              <div className="panel-glass" style={{ padding: 12 }}>
+                <div className="text-muted" style={{ fontSize: 13 }}>
+                  No source outcome data yet.
+                </div>
+              </div>
+            ) : (
+              outcomeBySource.map((row) => (
+                <OutcomeSourceCard key={row.source} row={row} />
               ))
             )}
           </div>
