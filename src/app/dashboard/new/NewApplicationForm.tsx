@@ -13,6 +13,8 @@ type Stage =
   | "REJECTED"
   | "WITHDRAWN";
 
+type FollowUpPreset = "none" | "tomorrow" | "3d" | "7d";
+
 const STAGES: { key: Stage; label: string }[] = [
   { key: "DRAFT", label: "Draft" },
   { key: "APPLIED", label: "Applied" },
@@ -24,13 +26,18 @@ const STAGES: { key: Stage; label: string }[] = [
   { key: "WITHDRAWN", label: "Withdrawn" },
 ];
 
+function isoFromPreset(p: FollowUpPreset): string | null {
+  const now = Date.now();
+  if (p === "tomorrow") return new Date(now + 24 * 60 * 60 * 1000).toISOString();
+  if (p === "3d") return new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString();
+  if (p === "7d") return new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString();
+  return null;
+}
+
 export default function NewApplicationForm() {
   const router = useRouter();
 
   const companyRef = useRef<HTMLInputElement | null>(null);
-  const roleRef = useRef<HTMLInputElement | null>(null);
-  const sourceRef = useRef<HTMLInputElement | null>(null);
-  const stageRef = useRef<HTMLSelectElement | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -39,15 +46,20 @@ export default function NewApplicationForm() {
   const [roleTitle, setRoleTitle] = useState("");
   const [source, setSource] = useState("");
   const [stage, setStage] = useState<Stage>("APPLIED");
+  const [followUpPreset, setFollowUpPreset] = useState<FollowUpPreset>("tomorrow");
+  const [appliedAt, setAppliedAt] = useState<string>(
+    () => new Date().toISOString().slice(0, 10),
+  );
 
   useEffect(() => {
     const t = setTimeout(() => companyRef.current?.focus(), 0);
     return () => clearTimeout(t);
   }, []);
 
-  const canSubmit = useMemo(() => {
-    return companyName.trim() !== "" && roleTitle.trim() !== "";
-  }, [companyName, roleTitle]);
+  const canSubmit = useMemo(
+    () => companyName.trim() !== "" && roleTitle.trim() !== "",
+    [companyName, roleTitle],
+  );
 
   async function onSubmit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -65,6 +77,11 @@ export default function NewApplicationForm() {
           roleTitle: roleTitle.trim(),
           source: source.trim() || null,
           stage,
+          nextActionAt: isoFromPreset(followUpPreset),
+          appliedAt:
+            stage !== "DRAFT" && appliedAt
+              ? new Date(appliedAt).toISOString()
+              : null,
         }),
       });
 
@@ -91,12 +108,8 @@ export default function NewApplicationForm() {
           className="form-input"
           value={companyName}
           onChange={(e) => {
-            const next = e.target.value;
-            setCompanyName(next);
-
-            if (source.trim() === "") {
-              setSource("LinkedIn");
-            }
+            setCompanyName(e.target.value);
+            if (source.trim() === "") setSource("LinkedIn");
           }}
           placeholder="e.g. Stripe"
         />
@@ -105,7 +118,6 @@ export default function NewApplicationForm() {
       <div className="form-field">
         <label className="form-label">Role title</label>
         <input
-          ref={roleRef}
           className="form-input"
           value={roleTitle}
           onChange={(e) => setRoleTitle(e.target.value)}
@@ -116,18 +128,16 @@ export default function NewApplicationForm() {
       <div className="form-field">
         <label className="form-label">Source</label>
         <input
-          ref={sourceRef}
           className="form-input"
           value={source}
           onChange={(e) => setSource(e.target.value)}
-          placeholder="e.g. LinkedIn"
+          placeholder="e.g. LinkedIn / Referral / Career Page"
         />
       </div>
 
       <div className="form-field">
         <label className="form-label">Stage</label>
         <select
-          ref={stageRef}
           className="form-select"
           value={stage}
           onChange={(e) => setStage(e.target.value as Stage)}
@@ -137,6 +147,32 @@ export default function NewApplicationForm() {
               {s.label}
             </option>
           ))}
+        </select>
+      </div>
+
+      {stage !== "DRAFT" ? (
+        <div className="form-field">
+          <label className="form-label">Date applied</label>
+          <input
+            type="date"
+            className="form-input"
+            value={appliedAt}
+            onChange={(e) => setAppliedAt(e.target.value)}
+          />
+        </div>
+      ) : null}
+
+      <div className="form-field">
+        <label className="form-label">Follow-up reminder</label>
+        <select
+          className="form-select"
+          value={followUpPreset}
+          onChange={(e) => setFollowUpPreset(e.target.value as FollowUpPreset)}
+        >
+          <option value="none">None</option>
+          <option value="tomorrow">Tomorrow</option>
+          <option value="3d">In 3 days</option>
+          <option value="7d">In 7 days</option>
         </select>
       </div>
 

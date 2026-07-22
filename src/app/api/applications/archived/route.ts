@@ -1,22 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { ApplicationStage } from "@prisma/client";
-import { WORKSPACE_ID } from "@/lib/workspace";
-//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { getCurrentWorkspaceId } from "@/lib/server/workspace";
+import { toErrorResponse } from "@/lib/server/api";
 
 export async function GET() {
-  const apps = await prisma.application.findMany({
-    where: {
-      workspaceId: WORKSPACE_ID,
-      stage: ApplicationStage.ARCHIVED,
-    },
-    include: {
-      role: { include: { company: true } },
-      events: { orderBy: { createdAt: "desc" } },
-    },
-    orderBy: [{ archivedAt: "desc" }, { updatedAt: "desc" }],
-  });
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    const apps = await prisma.application.findMany({
+      where: {
+        workspaceId,
+        stage: ApplicationStage.ARCHIVED,
+      },
+      include: {
+        role: { include: { company: true } },
+        events: { orderBy: { createdAt: "desc" } },
+      },
+      orderBy: [{ archivedAt: "desc" }, { updatedAt: "desc" }],
+    });
 
-  return NextResponse.json(apps);
+    return NextResponse.json(apps);
+  } catch (error) {
+    return toErrorResponse(error);
+  }
 }

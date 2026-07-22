@@ -58,6 +58,9 @@ export default function CreateApplicationDialog({
   const [stage, setStage] = useState<Stage>(defaultStage ?? "APPLIED");
   const [followUpPreset, setFollowUpPreset] =
     useState<FollowUpPreset>("tomorrow");
+  const [appliedAt, setAppliedAt] = useState<string>(
+    () => new Date().toISOString().slice(0, 10),
+  );
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -68,6 +71,7 @@ export default function CreateApplicationDialog({
     setSource("");
     setStage(nextStage ?? defaultStage ?? "APPLIED");
     setFollowUpPreset("tomorrow");
+    setAppliedAt(new Date().toISOString().slice(0, 10));
     setErr(null);
     setSaving(false);
   }
@@ -134,6 +138,10 @@ export default function CreateApplicationDialog({
         stage,
         source: trimmedSource || null,
         nextActionAt,
+        appliedAt:
+          stage !== "DRAFT" && appliedAt
+            ? new Date(appliedAt).toISOString()
+            : null,
       };
 
       const res = await fetch("/api/applications", {
@@ -419,6 +427,32 @@ export default function CreateApplicationDialog({
                 />
               </div>
             </div>
+
+            {stage !== "DRAFT" ? (
+              <div style={{ display: "grid", gap: 6 }}>
+                <label style={{ fontSize: 12, opacity: 0.75, fontWeight: 900 }}>
+                  Date applied
+                </label>
+                <input
+                  type="date"
+                  value={appliedAt}
+                  onChange={(e) => setAppliedAt(e.target.value)}
+                  onFocus={handleFieldFocus}
+                  onBlur={handleFieldBlur}
+                  style={{
+                    width: "100%",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "inherit",
+                    colorScheme: "dark",
+                    padding: "10px 12px",
+                    outline: "none",
+                    transition: "border 140ms ease, box-shadow 140ms ease",
+                  }}
+                />
+              </div>
+            ) : null}
 
             <div style={{ display: "grid", gap: 6 }}>
               <label style={{ fontSize: 12, opacity: 0.75, fontWeight: 900 }}>

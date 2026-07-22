@@ -1,27 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { CreateApplicationSchema } from "@/lib/validators";
-import { WORKSPACE_ID } from "@/lib/workspace";
-//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { getApplications } from "@/lib/server/applications";
+import { getCurrentWorkspaceId } from "@/lib/server/workspace";
+import { toErrorResponse } from "@/lib/server/api";
 
 export async function GET() {
-  const apps = await prisma.application.findMany({
-    where: {
-      workspaceId: WORKSPACE_ID,
-    },
-    include: {
-      role: { include: { company: true } },
-      events: { orderBy: { createdAt: "desc" } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json(apps);
+  try {
+    const apps = await getApplications();
+    return NextResponse.json(apps);
+  } catch (error) {
+    return toErrorResponse(error);
+  }
 }
 
 export async function POST(req: Request) {
   try {
+    const workspaceId = await getCurrentWorkspaceId();
+
     const raw = await req.json().catch(() => null);
     const parsed = CreateApplicationSchema.safeParse(raw);
 
@@ -32,16 +28,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const { companyName, roleTitle, source, stage } = parsed.data;
+    const { companyName, roleTitle, source, stage, appliedAt, nextActionAt } = parsed.data;
 
     const created = await prisma.$transaction(async (tx) => {
       const existingCompany = await tx.company.findFirst({
         where: {
-          workspaceId: WORKSPACE_ID,
-          name: {
-            equals: companyName,
-            mode: "insensitive",
-          },
+          workspaceId,
+          name: { equals: companyName, mode: "insensitive" },
         },
         select: { id: true },
       });
@@ -50,7 +43,7 @@ export async function POST(req: Request) {
         existingCompany ??
         (await tx.company.create({
           data: {
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             name: companyName,
             website: null,
             location: null,
@@ -61,7 +54,7 @@ export async function POST(req: Request) {
 
       const role = await tx.role.create({
         data: {
-          workspaceId: WORKSPACE_ID,
+          workspaceId,
           title: roleTitle,
           companyId: company.id,
         },
@@ -70,10 +63,16 @@ export async function POST(req: Request) {
 
       const app = await tx.application.create({
         data: {
-          workspaceId: WORKSPACE_ID,
+          workspaceId,
           roleId: role.id,
           source: source ?? null,
           stage,
+          appliedAt: appliedAt
+            ? new Date(appliedAt)
+            : stage !== "DRAFT"
+              ? new Date()
+              : null,
+          nextActionAt: nextActionAt ? new Date(nextActionAt) : null,
         },
         select: { id: true, stage: true },
       });
@@ -104,15 +103,10 @@ export async function POST(req: Request) {
         });
       }
 
-      await tx.applicationEvent.createMany({
-        data: eventsToCreate,
-      });
+      await tx.applicationEvent.createMany({ data: eventsToCreate });
 
       return tx.application.findFirst({
-        where: {
-          id: app.id,
-          workspaceId: WORKSPACE_ID,
-        },
+        where: { id: app.id, workspaceId },
         include: {
           role: { include: { company: true } },
           events: { orderBy: { createdAt: "desc" } },
@@ -121,15 +115,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(created, { status: 201 });
-  } catch (error: any) {
-    console.error("POST /api/applications failed:", error);
-    return NextResponse.json(
-      {
-        error: "Server error",
-        detail: error?.message ?? "Unknown error",
-        code: error?.code ?? null,
-      },
-      { status: 500 },
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

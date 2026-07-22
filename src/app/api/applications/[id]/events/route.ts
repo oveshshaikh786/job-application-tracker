@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { z } from "zod";
-
-//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
-import { WORKSPACE_ID } from "@/lib/workspace";
+import { getCurrentWorkspaceId } from "@/lib/server/workspace";
+import { toErrorResponse } from "@/lib/server/api";
 
 const CreateNoteSchema = z.object({
   message: z.string().min(1).max(5000),
@@ -22,35 +20,33 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-
-  if (!id || !isUuid(id)) {
-    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
-  }
-
-  const raw = await req.json().catch(() => null);
-  const parsed = CreateNoteSchema.safeParse(raw);
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
-
-  const app = await prisma.application.findFirst({
-    where: {
-      id,
-      workspaceId: WORKSPACE_ID,
-    },
-    select: { id: true },
-  });
-
-  if (!app) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
   try {
+    const workspaceId = await getCurrentWorkspaceId();
+    const { id } = await params;
+
+    if (!id || !isUuid(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+
+    const raw = await req.json().catch(() => null);
+    const parsed = CreateNoteSchema.safeParse(raw);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+
+    const app = await prisma.application.findFirst({
+      where: { id, workspaceId },
+      select: { id: true },
+    });
+
+    if (!app) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const note = await prisma.applicationEvent.create({
       data: {
         applicationId: id,
@@ -60,13 +56,7 @@ export async function POST(
     });
 
     return NextResponse.json(note, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      {
-        error: "Failed to add note",
-        hint: `Check prisma/schema.prisma enum EventType. "${NOTE_EVENT_TYPE}" must exist there.`,
-      },
-      { status: 500 },
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

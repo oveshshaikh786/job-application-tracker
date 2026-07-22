@@ -553,7 +553,34 @@ export async function GET() {
       return b.total - a.total;
     });
 
+  // ── Weekly trend: last 8 weeks ────────────────────────────────────────────
+  const WEEK_MS = 7 * DAY_MS;
+  const weeklyTrend: { week: string; applied: number; rejected: number }[] = [];
+
+  for (let w = 7; w >= 0; w--) {
+    const weekStart = nowMs - (w + 1) * WEEK_MS;
+    const weekEnd = nowMs - w * WEEK_MS;
+    const label = new Date(weekStart).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+
+    const weekApplied = apps.filter((a) => {
+      const t = new Date(a.createdAt).getTime();
+      return t >= weekStart && t < weekEnd;
+    }).length;
+
+    const weekRejected = apps.filter((a) => {
+      if (a.stage !== "REJECTED") return false;
+      const t = new Date(a.updatedAt).getTime();
+      return t >= weekStart && t < weekEnd;
+    }).length;
+
+    weeklyTrend.push({ week: label, applied: weekApplied, rejected: weekRejected });
+  }
+
   return NextResponse.json({
+    weeklyTrend,
     total,
     active,
     rejected,

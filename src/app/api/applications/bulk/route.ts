@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { ApplicationStage, EventType } from "@prisma/client";
-import { WORKSPACE_ID } from "@/lib/workspace";
-//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { getCurrentWorkspaceId } from "@/lib/server/workspace";
+import { toErrorResponse } from "@/lib/server/api";
 
 const ALLOWED_STAGES: ApplicationStage[] = [
   ApplicationStage.DRAFT,
@@ -41,60 +40,54 @@ function parseNextActionAt(input: unknown): Date | null | undefined {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-
-  const idsRaw = body?.ids;
-  const action = body?.action as BulkAction | undefined;
-  const stageRaw = body?.stage as string | undefined;
-  const nextActionAtParsed = parseNextActionAt(body?.nextActionAt);
-
-  const ids =
-    Array.isArray(idsRaw) &&
-    idsRaw.every((x) => typeof x === "string" && isUuid(x))
-      ? Array.from(new Set(idsRaw))
-      : null;
-
-  if (!ids || ids.length === 0) {
-    return NextResponse.json({ error: "Invalid ids" }, { status: 400 });
-  }
-
-  if (
-    action !== "SET_FOLLOW_UP" &&
-    action !== "CLEAR_FOLLOW_UP" &&
-    action !== "MOVE_STAGE" &&
-    action !== "ARCHIVE" &&
-    action !== "DELETE"
-  ) {
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  }
-
-  if (action === "SET_FOLLOW_UP" && nextActionAtParsed === undefined) {
-    return NextResponse.json(
-      { error: "Invalid nextActionAt (must be ISO string)" },
-      { status: 400 },
-    );
-  }
-
-  if (action === "MOVE_STAGE") {
-    if (!stageRaw || !ALLOWED_STAGES.includes(stageRaw as ApplicationStage)) {
-      return NextResponse.json({ error: "Invalid stage" }, { status: 400 });
-    }
-  }
-
-  const now = new Date();
-
   try {
+    const workspaceId = await getCurrentWorkspaceId();
+    const body = await req.json().catch(() => ({}));
+
+    const idsRaw = body?.ids;
+    const action = body?.action as BulkAction | undefined;
+    const stageRaw = body?.stage as string | undefined;
+    const nextActionAtParsed = parseNextActionAt(body?.nextActionAt);
+
+    const ids =
+      Array.isArray(idsRaw) &&
+      idsRaw.every((x) => typeof x === "string" && isUuid(x))
+        ? Array.from(new Set(idsRaw))
+        : null;
+
+    if (!ids || ids.length === 0) {
+      return NextResponse.json({ error: "Invalid ids" }, { status: 400 });
+    }
+
+    if (
+      action !== "SET_FOLLOW_UP" &&
+      action !== "CLEAR_FOLLOW_UP" &&
+      action !== "MOVE_STAGE" &&
+      action !== "ARCHIVE" &&
+      action !== "DELETE"
+    ) {
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+
+    if (action === "SET_FOLLOW_UP" && nextActionAtParsed === undefined) {
+      return NextResponse.json(
+        { error: "Invalid nextActionAt (must be ISO string)" },
+        { status: 400 },
+      );
+    }
+
+    if (action === "MOVE_STAGE") {
+      if (!stageRaw || !ALLOWED_STAGES.includes(stageRaw as ApplicationStage)) {
+        return NextResponse.json({ error: "Invalid stage" }, { status: 400 });
+      }
+    }
+
+    const now = new Date();
+
     const result = await prisma.$transaction(async (tx) => {
       const currentApps = await tx.application.findMany({
-        where: {
-          id: { in: ids },
-          workspaceId: WORKSPACE_ID,
-        },
-        select: {
-          id: true,
-          stage: true,
-          nextActionAt: true,
-        },
+        where: { id: { in: ids }, workspaceId },
+        select: { id: true, stage: true, nextActionAt: true },
       });
 
       const foundIds = new Set(currentApps.map((a) => a.id));
@@ -104,15 +97,10 @@ export async function POST(req: Request) {
         await tx.application.deleteMany({
           where: {
             id: { in: currentApps.map((a) => a.id) },
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
           },
         });
-
-        return {
-          ok: true,
-          updatedCount: currentApps.length,
-          missingIds,
-        };
+        return { ok: true, updatedCount: currentApps.length, missingIds };
       }
 
       if (action === "CLEAR_FOLLOW_UP") {
@@ -120,14 +108,8 @@ export async function POST(req: Request) {
 
         if (toClear.length > 0) {
           await tx.application.updateMany({
-            where: {
-              id: { in: toClear.map((a) => a.id) },
-              workspaceId: WORKSPACE_ID,
-            },
-            data: {
-              nextActionAt: null,
-              updatedAt: now,
-            },
+            where: { id: { in: toClear.map((a) => a.id) }, workspaceId },
+            data: { nextActionAt: null, updatedAt: now },
           });
 
           await tx.applicationEvent.createMany({
@@ -146,11 +128,7 @@ export async function POST(req: Request) {
           });
         }
 
-        return {
-          ok: true,
-          updatedCount: toClear.length,
-          missingIds,
-        };
+        return { ok: true, updatedCount: toClear.length, missingIds };
       }
 
       if (action === "SET_FOLLOW_UP") {
@@ -161,14 +139,8 @@ export async function POST(req: Request) {
 
         if (toSet.length > 0) {
           await tx.application.updateMany({
-            where: {
-              id: { in: toSet.map((a) => a.id) },
-              workspaceId: WORKSPACE_ID,
-            },
-            data: {
-              nextActionAt: next,
-              updatedAt: now,
-            },
+            where: { id: { in: toSet.map((a) => a.id) }, workspaceId },
+            data: { nextActionAt: next, updatedAt: now },
           });
 
           await tx.applicationEvent.createMany({
@@ -187,11 +159,7 @@ export async function POST(req: Request) {
           });
         }
 
-        return {
-          ok: true,
-          updatedCount: toSet.length,
-          missingIds,
-        };
+        return { ok: true, updatedCount: toSet.length, missingIds };
       }
 
       if (action === "ARCHIVE") {
@@ -225,11 +193,7 @@ export async function POST(req: Request) {
           });
         }
 
-        return {
-          ok: true,
-          updatedCount: toArchive.length,
-          missingIds,
-        };
+        return { ok: true, updatedCount: toArchive.length, missingIds };
       }
 
       const nextStage = stageRaw as ApplicationStage;
@@ -262,16 +226,11 @@ export async function POST(req: Request) {
         });
       }
 
-      return {
-        ok: true,
-        updatedCount: toMove.length,
-        missingIds,
-      };
+      return { ok: true, updatedCount: toMove.length, missingIds };
     });
 
     return NextResponse.json(result);
-  } catch (e) {
-    console.error("Bulk action failed:", e);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

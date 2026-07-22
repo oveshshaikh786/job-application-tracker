@@ -214,9 +214,7 @@ export default function KanbanBoard({
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   const [mounted, setMounted] = useState(false);
-  const [density, setDensity] = useState<"comfortable" | "compact">(
-    "comfortable",
-  );
+  const [density, setDensity] = useState<"comfortable" | "compact">("compact");
   const [filterSlaBreached, setFilterSlaBreached] = useState(false);
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [filterNeedsFollowUp, setFilterNeedsFollowUp] = useState(false);
@@ -236,7 +234,9 @@ export default function KanbanBoard({
     const p = readPrefs();
     if (!p) return;
 
-    if (p.density === "compact") setDensity("compact");
+    if (p.density === "comfortable" || p.density === "compact") {
+      setDensity(p.density);
+    }
     if (typeof p.filterSlaBreached === "boolean") {
       setFilterSlaBreached(p.filterSlaBreached);
     }
@@ -267,18 +267,18 @@ export default function KanbanBoard({
   const D =
     density === "compact"
       ? {
-          colW: 290,
-          laneInnerPad: 10,
-          gap: 10,
+          colW: 250,
+          laneInnerPad: 8,
+          gap: 8,
           laneHeaderPad: 8,
-          laneHeaderH: 42,
+          laneHeaderH: 38,
         }
       : {
-          colW: 320,
-          laneInnerPad: 12,
-          gap: 12,
-          laneHeaderPad: 10,
-          laneHeaderH: 44,
+          colW: 280,
+          laneInnerPad: 10,
+          gap: 10,
+          laneHeaderPad: 9,
+          laneHeaderH: 40,
         };
 
   const isNarrow = useMediaQuery("(max-width: 820px)");
@@ -334,7 +334,7 @@ export default function KanbanBoard({
   async function persistNextActionAt(id: string, nextActionAt: string | null) {
     markSaving(id, true);
     try {
-      const res = await fetch(`/api/applications/${id}`, {
+      const res = await fetch(`/api/applications/${id}/followup`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nextActionAt }),
@@ -620,14 +620,16 @@ export default function KanbanBoard({
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
+
     const ro = new ResizeObserver(() => setHeaderHeight(el.offsetHeight));
     ro.observe(el);
     setHeaderHeight(el.offsetHeight);
+
     return () => ro.disconnect();
   }, [selectedCount, anyFilterOn, density, bulkBusy]);
 
   const boardH = useMemo(
-    () => `calc(100dvh - ${headerHeight + 24}px)`,
+    () => `calc(100dvh - ${headerHeight + 28}px)`,
     [headerHeight],
   );
 
@@ -649,20 +651,21 @@ export default function KanbanBoard({
       <div
         style={{
           display: "grid",
-          gap: 12,
+          gap: 10,
           minWidth: 0,
           animation: "boardFadeIn 240ms ease",
         }}
       >
         <div
           ref={headerRef}
-          className="panel-glass"
+          className="panel-glass jt-board-toolbar"
           style={{
             position: "sticky",
             top: 0,
             zIndex: 60,
-            padding: 12,
-            boxShadow: "var(--shadow-lg)",
+            padding: 10,
+            boxShadow: "none",
+            borderRadius: 16,
           }}
         >
           <div
@@ -852,12 +855,15 @@ export default function KanbanBoard({
         </div>
 
         <div
-          className="boardScroll"
+          className="boardScroll jt-board-scroll"
           style={{
             height: boardH,
             minHeight: 0,
+            display: "flex",
             gap: D.gap,
-            paddingInline: 14,
+            overflowX: "auto",
+            overflowY: "hidden",
+            paddingInline: 0,
             paddingBottom: 12,
             scrollSnapType: isNarrow ? "x mandatory" : "x proximity",
             scrollPaddingInline: 12,
@@ -870,7 +876,10 @@ export default function KanbanBoard({
             return (
               <section
                 key={s.key}
-                className={`board-lane${isOver ? " is-drop-target" : ""}`}
+                className={`board-lane jt-board-lane${
+                  isOver ? " is-drop-target" : ""
+                }`}
+                data-stage={s.key}
                 onDragOver={(e) => onDragOverColumn(e, s.key)}
                 onDrop={(e) => onDropToColumn(e, s.key)}
                 style={{
@@ -879,38 +888,45 @@ export default function KanbanBoard({
                   flex: `0 0 ${colW}px`,
                   height: "100%",
                   minHeight: 0,
+                  scrollSnapAlign: isNarrow ? "start" : "none",
                 }}
               >
                 <div
-                  className="board-lane-header"
+                  className="board-lane-header jt-board-lane-header"
                   style={{
                     padding: D.laneHeaderPad,
                   }}
                 >
                   <div
-                    className="board-lane-title-row"
+                    className="board-lane-title-row jt-board-lane-title-row"
                     style={{
-                      height: D.laneHeaderH - 2,
-                      paddingInline: 12,
+                      height: D.laneHeaderH,
+                      paddingInline: 10,
                     }}
                   >
-                    <span className="board-lane-title">{s.label}</span>
-                    <span className="board-lane-count">{items.length}</span>
+                    <span className="board-lane-title jt-board-lane-title">
+                      {s.label}
+                    </span>
+                    <span className="board-lane-count jt-board-lane-count">
+                      {items.length}
+                    </span>
                   </div>
                 </div>
 
                 <div
-                  className="board-lane-body"
+                  className="board-lane-body jt-board-lane-body"
                   style={{
-                    paddingTop: 10,
-                    paddingInline: D.laneInnerPad + 2,
+                    paddingTop: 8,
+                    paddingInline: D.laneInnerPad,
                     paddingBottom: D.laneInnerPad,
-                    gap: D.gap + 2,
+                    gap: D.gap,
                     scrollPaddingTop: D.laneHeaderH + D.laneHeaderPad + 12,
                   }}
                 >
                   {items.length === 0 ? (
-                    <div className="board-lane-empty">No items.</div>
+                    <div className="board-lane-empty jt-board-lane-empty">
+                      No items.
+                    </div>
                   ) : null}
 
                   {items.map((a: AppRow) => {

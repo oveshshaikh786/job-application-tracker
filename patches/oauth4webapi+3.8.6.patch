@@ -1,0 +1,28 @@
+diff --git a/node_modules/oauth4webapi/LICENSE.md b/node_modules/oauth4webapi/LICENSE.md
+old mode 100644
+new mode 100755
+diff --git a/node_modules/oauth4webapi/README.md b/node_modules/oauth4webapi/README.md
+old mode 100644
+new mode 100755
+diff --git a/node_modules/oauth4webapi/build/index.d.ts b/node_modules/oauth4webapi/build/index.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/oauth4webapi/build/index.js b/node_modules/oauth4webapi/build/index.js
+old mode 100644
+new mode 100755
+index fdee45d..36560bc
+--- a/node_modules/oauth4webapi/build/index.js
++++ b/node_modules/oauth4webapi/build/index.js
+@@ -2063,7 +2063,8 @@ export function validateAuthResponse(as, client, parameters, expectedState) {
+     const iss = getURLSearchParameter(parameters, 'iss');
+     const state = getURLSearchParameter(parameters, 'state');
+     if (!iss && as.authorization_response_iss_parameter_supported) {
+-        throw OPE('response parameter "iss" (issuer) missing', INVALID_RESPONSE, { parameters });
++        // Patched: Google claims iss support in discovery but omits it from responses.
++        // The iss value is still validated when present (check below).
+     }
+     if (iss && iss !== as.issuer) {
+         throw OPE('unexpected "iss" (issuer) response parameter value', INVALID_RESPONSE, {
+diff --git a/node_modules/oauth4webapi/build/index.js.map b/node_modules/oauth4webapi/build/index.js.map
+old mode 100644
+new mode 100755

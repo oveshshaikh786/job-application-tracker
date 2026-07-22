@@ -9,20 +9,12 @@ export const metadata: Metadata = {
 const themeInitScript = `
 (function () {
   try {
-    var key = "jobtracker:theme";
-    var saved = localStorage.getItem(key) || "dark";
-    document.documentElement.setAttribute("data-theme", saved);
-  } catch (e) {
     document.documentElement.setAttribute("data-theme", "dark");
-  }
+  } catch (e) {}
 })();
 `;
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

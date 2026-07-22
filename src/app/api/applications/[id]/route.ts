@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-//import { DEFAULT_WORKSPACE_ID } from "@/lib/default-workspace";
 import { ApplicationStage, EventType } from "@prisma/client";
-import { WORKSPACE_ID } from "@/lib/workspace";
-
-//const WORKSPACE_ID = DEFAULT_WORKSPACE_ID;
+import { getCurrentWorkspaceId } from "@/lib/server/workspace";
+import { toErrorResponse } from "@/lib/server/api";
 
 const ALLOWED_STAGES: ApplicationStage[] = [
   ApplicationStage.DRAFT,
@@ -42,28 +40,30 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    const { id } = await params;
 
-  if (!id || !isUuid(id)) {
-    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    if (!id || !isUuid(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+
+    const app = await prisma.application.findFirst({
+      where: { id, workspaceId },
+      include: {
+        role: { include: { company: true } },
+        events: { orderBy: { createdAt: "desc" } },
+      },
+    });
+
+    if (!app) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(app);
+  } catch (error) {
+    return toErrorResponse(error);
   }
-
-  const app = await prisma.application.findFirst({
-    where: {
-      id,
-      workspaceId: WORKSPACE_ID,
-    },
-    include: {
-      role: { include: { company: true } },
-      events: { orderBy: { createdAt: "desc" } },
-    },
-  });
-
-  if (!app) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  return NextResponse.json(app);
 }
 
 export async function PATCH(
@@ -71,6 +71,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const workspaceId = await getCurrentWorkspaceId();
     const { id } = await params;
 
     if (!id || !isUuid(id)) {
@@ -110,10 +111,7 @@ export async function PATCH(
 
     const updated = await prisma.$transaction(async (tx) => {
       const current = await tx.application.findFirst({
-        where: {
-          id,
-          workspaceId: WORKSPACE_ID,
-        },
+        where: { id, workspaceId },
         select: {
           id: true,
           stage: true,
@@ -205,16 +203,8 @@ export async function PATCH(
     }
 
     return NextResponse.json(updated);
-  } catch (error: any) {
-    console.error("PATCH /api/applications/[id] failed:", error);
-    return NextResponse.json(
-      {
-        error: "Server error",
-        detail: error?.message ?? "Unknown error",
-        code: error?.code ?? null,
-      },
-      { status: 500 },
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }
 
@@ -222,26 +212,26 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    const { id } = await params;
 
-  if (!id || !isUuid(id)) {
-    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    if (!id || !isUuid(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+
+    const existing = await prisma.application.findFirst({
+      where: { id, workspaceId },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await prisma.application.delete({ where: { id } });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return toErrorResponse(error);
   }
-
-  const existing = await prisma.application.findFirst({
-    where: {
-      id,
-      workspaceId: WORKSPACE_ID,
-    },
-  });
-
-  if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  await prisma.application.delete({
-    where: { id },
-  });
-
-  return NextResponse.json({ ok: true });
 }

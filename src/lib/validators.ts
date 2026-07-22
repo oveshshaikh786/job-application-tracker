@@ -32,6 +32,8 @@ export const CreateApplicationSchema = z.object({
   roleTitle: z.string().min(1).max(160),
   source: z.string().max(120).optional().nullable(),
   stage: z.enum(ALLOWED_STAGES).optional().default("DRAFT"),
+  appliedAt: z.string().datetime({ offset: true }).optional().nullable(),
+  nextActionAt: z.string().datetime({ offset: true }).optional().nullable(),
 });
 
 export const UpdateApplicationStageSchema = z.object({

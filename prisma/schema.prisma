@@ -38,14 +38,60 @@ enum WorkspaceRole {
 }
 
 model User {
-  id            String            @id @default(cuid())
-  email         String            @unique
-  name          String?
-  image         String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id                  String            @id @default(cuid())
+  email               String            @unique
+  emailVerified       DateTime?
+  name                String?
+  image               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
-  memberships   WorkspaceMember[]
+  // The workspace currently selected by the user (last-active).
+  // Optional because a brand-new user has no workspace yet.
+  currentWorkspaceId  String?
+
+  memberships         WorkspaceMember[]
+  accounts            Account[]
+  sessions            Session[]
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 model Workspace {
@@ -56,9 +102,28 @@ model Workspace {
   updatedAt     DateTime          @updatedAt
 
   memberships   WorkspaceMember[]
+  invites       WorkspaceInvite[]
   companies     Company[]
   roles         Role[]
   applications  Application[]
+}
+
+model WorkspaceInvite {
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Optional — if set, only this email can use it
+  email       String?
+
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedByEmail String?
+
+  @@index([workspaceId])
+  @@index([token])
 }
 
 model WorkspaceMember {
