@@ -27,37 +27,38 @@
 /* ---------------- DARK DEFAULT (Slate Navy — Professional) ---------------- */
 :root,
 html[data-theme="dark"] {
-  --bg: #080f1e;
-  --bg-1: #0c1526;
-  --bg-2: #101c30;
-  --bg-3: #162338;
-  --bg-4: #1d2d47;
+  /* Graphite + Indigo */
+  --bg: #111111;
+  --bg-1: #171717;
+  --bg-2: #1d1d1d;
+  --bg-3: #242424;
+  --bg-4: #2c2c2c;
 
-  --glass: rgba(255, 255, 255, 0.025);
-  --glass-md: rgba(255, 255, 255, 0.04);
-  --glass-lg: rgba(255, 255, 255, 0.06);
+  --glass: rgba(255, 255, 255, 0.028);
+  --glass-md: rgba(255, 255, 255, 0.048);
+  --glass-lg: rgba(255, 255, 255, 0.072);
 
-  --border: rgba(148, 163, 210, 0.08);
-  --border-1: rgba(148, 163, 210, 0.13);
-  --border-2: rgba(148, 163, 210, 0.20);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-1: rgba(255, 255, 255, 0.11);
+  --border-2: rgba(255, 255, 255, 0.17);
 
-  --text: rgba(226, 232, 245, 0.97);
-  --text-1: rgba(226, 232, 245, 0.70);
-  --text-2: rgba(226, 232, 245, 0.44);
-  --text-3: rgba(226, 232, 245, 0.24);
+  --text: rgba(245, 245, 245, 0.97);
+  --text-1: rgba(245, 245, 245, 0.65);
+  --text-2: rgba(245, 245, 245, 0.40);
+  --text-3: rgba(245, 245, 245, 0.22);
 
-  --accent: #3b82f6;
-  --accent-dim: rgba(59, 130, 246, 0.12);
-  --accent-rim: rgba(59, 130, 246, 0.30);
+  --accent: #6366f1;
+  --accent-dim: rgba(99, 102, 241, 0.12);
+  --accent-rim: rgba(99, 102, 241, 0.30);
   --accent-glow:
-    0 0 24px rgba(59, 130, 246, 0.16), 0 0 6px rgba(59, 130, 246, 0.10);
+    0 0 24px rgba(99, 102, 241, 0.18), 0 0 6px rgba(99, 102, 241, 0.10);
 
-  --ok: #10b981;
-  --ok-dim: rgba(16, 185, 129, 0.09);
-  --ok-rim: rgba(16, 185, 129, 0.24);
+  --ok: #22c55e;
+  --ok-dim: rgba(34, 197, 94, 0.10);
+  --ok-rim: rgba(34, 197, 94, 0.26);
 
   --warn: #f59e0b;
-  --warn-dim: rgba(245, 158, 11, 0.09);
+  --warn-dim: rgba(245, 158, 11, 0.10);
   --warn-rim: rgba(245, 158, 11, 0.28);
 
   --danger: #ef4444;
@@ -66,46 +67,46 @@ html[data-theme="dark"] {
 
   --critical: #f43f5e;
   --critical-dim: rgba(244, 63, 94, 0.11);
-  --critical-rim: rgba(244, 63, 94, 0.36);
+  --critical-rim: rgba(244, 63, 94, 0.34);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.52), 0 1px 3px rgba(0, 0, 0, 0.40);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.56), 0 2px 6px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.64), 0 4px 12px rgba(0, 0, 0, 0.46);
-  --shadow-xl: 0 20px 56px rgba(0, 0, 0, 0.74), 0 8px 20px rgba(0, 0, 0, 0.52);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.50), 0 1px 1px rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.46), 0 1px 3px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.50), 0 2px 6px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.58), 0 4px 12px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 20px 56px rgba(0, 0, 0, 0.68), 0 8px 20px rgba(0, 0, 0, 0.46);
 
-  --card-accent-color: rgba(148, 163, 210, 0.16);
-  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.50), 0 1px 3px rgba(0, 0, 0, 0.36);
+  --card-accent-color: rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.44), 0 1px 3px rgba(0, 0, 0, 0.30);
 
   --theme-bg-image:
     radial-gradient(
-      ellipse 60vw 45vh at 90% -5%,
-      rgba(59, 130, 246, 0.04) 0%,
+      ellipse 55vw 40vh at 92% -4%,
+      rgba(99, 102, 241, 0.045) 0%,
       transparent 55%
     ),
     radial-gradient(
-      ellipse 40vw 35vh at 5% 95%,
-      rgba(59, 130, 246, 0.02) 0%,
+      ellipse 38vw 32vh at 4% 96%,
+      rgba(99, 102, 241, 0.025) 0%,
       transparent 52%
     );
 
-  /* Sidebar specific */
-  --sidebar-bg: #060d1c;
-  --sidebar-border: rgba(148, 163, 210, 0.07);
-  --sidebar-active-bg: rgba(59, 130, 246, 0.10);
-  --sidebar-active-border: rgba(59, 130, 246, 0.35);
+  /* Sidebar */
+  --sidebar-bg: #0d0d0d;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-active-bg: rgba(99, 102, 241, 0.10);
+  --sidebar-active-border: rgba(99, 102, 241, 0.32);
   --sidebar-active-indicator: var(--accent);
-  --topbar-bg: rgba(8, 15, 30, 0.93);
+  --topbar-bg: rgba(17, 17, 17, 0.93);
 
   /* Stage bar colors */
-  --stage-draft: rgba(148, 163, 184, 0.4);
+  --stage-draft: rgba(180, 180, 180, 0.35);
   --stage-applied: var(--accent);
   --stage-recruiter: rgba(168, 85, 247, 0.75);
   --stage-tech: rgba(251, 146, 60, 0.75);
   --stage-onsite: rgba(251, 191, 36, 0.75);
   --stage-offer: var(--ok);
   --stage-rejected: var(--danger);
-  --stage-withdrawn: rgba(148, 163, 184, 0.3);
+  --stage-withdrawn: rgba(180, 180, 180, 0.28);
 }
 
 
