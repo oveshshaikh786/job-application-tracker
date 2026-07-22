@@ -37,6 +37,13 @@ enum WorkspaceRole {
   MEMBER
 }
 
+enum InterviewOutcome {
+  PENDING
+  PASSED
+  FAILED
+  CANCELLED
+}
+
 model User {
   id                  String            @id @default(cuid())
   email               String            @unique
@@ -46,8 +53,6 @@ model User {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
-  // The workspace currently selected by the user (last-active).
-  // Optional because a brand-new user has no workspace yet.
   currentWorkspaceId  String?
 
   memberships         WorkspaceMember[]
@@ -106,6 +111,15 @@ model Workspace {
   companies     Company[]
   roles         Role[]
   applications  Application[]
+  weeklyGoal    WeeklyGoal?
+}
+
+model WeeklyGoal {
+  id            String    @id @default(cuid())
+  target        Int       @default(5)
+  workspaceId   String    @unique
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  updatedAt     DateTime  @updatedAt
 }
 
 model WorkspaceInvite {
@@ -114,7 +128,6 @@ model WorkspaceInvite {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  // Optional — if set, only this email can use it
   email       String?
 
   createdAt   DateTime  @default(now())
@@ -192,7 +205,25 @@ model Application {
   archivedAt        DateTime?
   archivedFromStage ApplicationStage?
 
+  // Rich notes (plain text, stored per-event via ApplicationEvent)
   notes             String?
+
+  // Salary
+  salaryMin         Int?
+  salaryMax         Int?
+  salaryCurrency    String?           @default("USD")
+
+  // Contact at the company
+  contactName       String?
+  contactEmail      String?
+  contactRole       String?
+
+  // Excitement level 1–5
+  excitement        Int?              @default(3)
+
+  // Job description / posting copy
+  jobDescription    String?           @db.Text
+
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -203,12 +234,31 @@ model Application {
   role              Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   events            ApplicationEvent[]
+  interviews        InterviewRound[]
 
   @@index([workspaceId])
   @@index([stage])
   @@index([roleId])
   @@index([stageEnteredAt])
   @@index([nextActionAt])
+}
+
+model InterviewRound {
+  id            String           @id @default(uuid())
+  round         Int
+  type          String           // "Phone Screen" | "Technical" | "System Design" | "Behavioral" | "Onsite" | "HR" | "Other"
+  scheduledAt   DateTime?
+  completedAt   DateTime?
+  outcome       InterviewOutcome @default(PENDING)
+  notes         String?          @db.Text
+  interviewers  String?          // comma-separated names
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  applicationId String
+  application   Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
 }
 
 model ApplicationEvent {

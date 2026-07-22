@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Member = {
   id: string;
@@ -48,6 +49,7 @@ function Avatar({ name, image }: { name: string | null; image: string | null }) 
 }
 
 export default function SettingsClient({ workspace, members: initialMembers, isOwner }: Props) {
+  const router = useRouter();
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [workspaceName, setWorkspaceName] = useState(workspace.name);
   const [editingName, setEditingName] = useState(false);
@@ -77,6 +79,7 @@ export default function SettingsClient({ workspace, members: initialMembers, isO
       }
       setWorkspaceName(trimmed);
       setEditingName(false);
+      router.refresh(); // re-fetches server component so sidebar name updates instantly
     } catch {
       setNameError("Network error");
     } finally {

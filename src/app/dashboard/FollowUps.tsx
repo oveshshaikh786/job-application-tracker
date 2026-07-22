@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import TodayQueue from "./TodayQueue";
+import EmailTemplates from "./EmailTemplates";
 import { useApplicationsStore } from "@/lib/store/useApplicationsStore";
 import type { Application } from "@/domain/application/types";
 
@@ -21,6 +22,9 @@ export default function FollowupsPage() {
   }, [setApps]);
 
   return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <EmailTemplates />
       <TodayQueue />
+    </div>
   );
 }

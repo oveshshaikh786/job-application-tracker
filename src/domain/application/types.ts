@@ -52,6 +52,22 @@ export type Role = {
   company?: Company | null;
 };
 
+export type InterviewOutcome = "PENDING" | "PASSED" | "FAILED" | "CANCELLED";
+
+export type InterviewRound = {
+  id: string;
+  round: number;
+  type: string;
+  scheduledAt?: string | null;
+  completedAt?: string | null;
+  outcome: InterviewOutcome;
+  notes?: string | null;
+  interviewers?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  applicationId: string;
+};
+
 export type Application = {
   id: string;
   stage: Stage;
@@ -64,6 +80,23 @@ export type Application = {
   archivedFromStage?: Stage | null;
 
   notes?: string | null;
+
+  // Salary
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryCurrency?: string | null;
+
+  // Contact
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactRole?: string | null;
+
+  // Excitement 1–5
+  excitement?: number | null;
+
+  // Job description
+  jobDescription?: string | null;
+
   createdAt: string;
   updatedAt?: string;
 
@@ -72,4 +105,5 @@ export type Application = {
   role?: Role | null;
 
   events?: ApplicationEvent[];
+  interviews?: InterviewRound[];
 };

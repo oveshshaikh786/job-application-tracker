@@ -9,6 +9,14 @@ const UpdateMetaSchema = z.object({
   companyName: z.string().min(1).max(120).optional(),
   roleTitle: z.string().min(1).max(160).optional(),
   source: z.string().max(120).optional().nullable(),
+  salaryMin: z.number().int().min(0).optional().nullable(),
+  salaryMax: z.number().int().min(0).optional().nullable(),
+  salaryCurrency: z.string().max(10).optional().nullable(),
+  contactName: z.string().max(120).optional().nullable(),
+  contactEmail: z.string().email().max(200).optional().nullable(),
+  contactRole: z.string().max(80).optional().nullable(),
+  excitement: z.number().int().min(1).max(5).optional().nullable(),
+  jobDescription: z.string().max(50000).optional().nullable(),
 });
 
 function isUuid(v: string) {
@@ -39,7 +47,12 @@ export async function PATCH(
       );
     }
 
-    const { companyName, roleTitle, source } = parsed.data;
+    const {
+      companyName, roleTitle, source,
+      salaryMin, salaryMax, salaryCurrency,
+      contactName, contactEmail, contactRole,
+      excitement, jobDescription,
+    } = parsed.data;
 
     const updated = await prisma.$transaction(async (tx) => {
       const app = await tx.application.findFirst({
@@ -63,11 +76,20 @@ export async function PATCH(
         changes.push(`role: ${app.role.title} → ${roleTitle}`);
       }
 
-      if (typeof source !== "undefined") {
-        await tx.application.update({
-          where: { id },
-          data: { source: source ?? null, updatedAt: new Date() },
-        });
+      // Build application-level updates
+      const appData: Record<string, unknown> = { updatedAt: new Date() };
+      if (typeof source !== "undefined") appData.source = source ?? null;
+      if (typeof salaryMin !== "undefined") appData.salaryMin = salaryMin;
+      if (typeof salaryMax !== "undefined") appData.salaryMax = salaryMax;
+      if (typeof salaryCurrency !== "undefined") appData.salaryCurrency = salaryCurrency;
+      if (typeof contactName !== "undefined") appData.contactName = contactName;
+      if (typeof contactEmail !== "undefined") appData.contactEmail = contactEmail;
+      if (typeof contactRole !== "undefined") appData.contactRole = contactRole;
+      if (typeof excitement !== "undefined") appData.excitement = excitement;
+      if (typeof jobDescription !== "undefined") appData.jobDescription = jobDescription;
+
+      if (Object.keys(appData).length > 1) {
+        await tx.application.update({ where: { id }, data: appData });
       }
 
       if (companyName) {
