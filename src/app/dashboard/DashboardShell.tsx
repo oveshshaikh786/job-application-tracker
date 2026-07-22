@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { signOut } from "next-auth/react";
 import CreateApplicationDialog from "@/components/CreateApplicationDialog";
 import { useApplicationsStore } from "@/lib/store/useApplicationsStore";
@@ -42,6 +42,22 @@ export default function DashboardShell({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [wsSwitcherOpen, setWsSwitcherOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("jt-theme") as "dark" | "light" | null;
+    if (saved) setTheme(saved);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const next = theme === "dark" ? "light" : "dark";
+    const root = document.documentElement;
+    root.classList.add("is-theme-switching");
+    root.setAttribute("data-theme", next);
+    localStorage.setItem("jt-theme", next);
+    setTheme(next);
+    setTimeout(() => root.classList.remove("is-theme-switching"), 350);
+  }, [theme]);
 
   const counts = useMemo(() => {
     const nonArchived = apps.filter((a) => a.stage !== "ARCHIVED");
@@ -160,6 +176,20 @@ export default function DashboardShell({
 
         {/* User profile + sign-out */}
         <div className="jt-sidebar-footer">
+          {/* Theme toggle */}
+          <div className="jt-theme-toggle-row">
+            <span className="jt-theme-toggle-label">{theme === "dark" ? "Dark" : "Light"}</span>
+            <button
+              className="jt-theme-pill"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label="Toggle theme"
+            >
+              <span className="jt-theme-pill-thumb">
+                {theme === "dark" ? "🌙" : "☀"}
+              </span>
+            </button>
+          </div>
           <div className="jt-user-row">
             <div className="jt-user-avatar">
               {user?.image ? (
