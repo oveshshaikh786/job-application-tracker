@@ -2726,6 +2726,8 @@ select option {
   }
 
   .jt-sidebar.is-mobile-open {
+    width: 240px;
+    min-width: 240px;
     transform: translateX(0);
   }
 

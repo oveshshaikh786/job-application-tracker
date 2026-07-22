@@ -49,10 +49,40 @@ function Avatar({ name, image }: { name: string | null; image: string | null }) 
 
 export default function SettingsClient({ workspace, members: initialMembers, isOwner }: Props) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [workspaceName, setWorkspaceName] = useState(workspace.name);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(workspace.name);
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  async function saveWorkspaceName() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) { setNameError("Name cannot be empty"); return; }
+    setSavingName(true);
+    setNameError(null);
+    try {
+      const res = await fetch("/api/workspace", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        setNameError(d.error ?? "Failed to save");
+        return;
+      }
+      setWorkspaceName(trimmed);
+      setEditingName(false);
+    } catch {
+      setNameError("Network error");
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   async function generateInvite() {
     setGenerating(true);
@@ -107,7 +137,46 @@ export default function SettingsClient({ workspace, members: initialMembers, isO
         <div className="settings-card">
           <div className="settings-row">
             <span className="settings-key">Name</span>
-            <span className="settings-val">{workspace.name}</span>
+            <div className="settings-val" style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+              {isOwner && editingName ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      className="settings-invite-input"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void saveWorkspaceName();
+                        if (e.key === "Escape") { setEditingName(false); setNameInput(workspaceName); setNameError(null); }
+                      }}
+                      autoFocus
+                      maxLength={80}
+                      style={{ flex: 1 }}
+                    />
+                    <button className="btn btn-primary" onClick={() => void saveWorkspaceName()} disabled={savingName} style={{ whiteSpace: "nowrap" }}>
+                      {savingName ? "Saving…" : "Save"}
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => { setEditingName(false); setNameInput(workspaceName); setNameError(null); }} disabled={savingName}>
+                      Cancel
+                    </button>
+                  </div>
+                  {nameError && <span style={{ color: "var(--danger)", fontSize: 12 }}>{nameError}</span>}
+                </div>
+              ) : (
+                <>
+                  <span>{workspaceName}</span>
+                  {isOwner && (
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: "2px 10px", fontSize: 12 }}
+                      onClick={() => { setNameInput(workspaceName); setEditingName(true); }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
           <div className="settings-row">
             <span className="settings-key">Slug</span>

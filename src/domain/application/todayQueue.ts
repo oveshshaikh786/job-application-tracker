@@ -24,6 +24,7 @@ export type TodayQueueItem = {
 export type TodayQueueBuckets = {
   overdue: TodayQueueItem[];
   due24h: TodayQueueItem[];
+  dueThisWeek: TodayQueueItem[];
   ghostedNoResponse: TodayQueueItem[];
   stuckNoFollowUp: TodayQueueItem[];
   slaBreachedNoFollowUp: TodayQueueItem[];
@@ -96,6 +97,7 @@ export function buildTodayQueue(
 ): TodayQueueBuckets {
   const overdue: Ranked[] = [];
   const due24h: Ranked[] = [];
+  const dueThisWeek: Ranked[] = [];
   const ghostedNoResponse: Ranked[] = [];
   const stuckNoFollowUp: Ranked[] = [];
   const slaBreachedNoFollowUp: Ranked[] = [];
@@ -136,6 +138,18 @@ export function buildTodayQueue(
               stageAgeDays,
             ),
             score: (DAY_MS - diff) / 60_000 + sw * 1000,
+          });
+          continue;
+        }
+        // 1–7 days out: show in "Due this week" section
+        if (diff > DAY_MS && diff <= 7 * DAY_MS) {
+          dueThisWeek.push({
+            item: toItem(
+              app,
+              { kind: "due", label: follow.label },
+              stageAgeDays,
+            ),
+            score: (7 * DAY_MS - diff) / 60_000 + sw * 1000,
           });
           continue;
         }
@@ -193,6 +207,7 @@ export function buildTodayQueue(
 
   overdue.sort(topSortDesc);
   due24h.sort(topSortDesc);
+  dueThisWeek.sort(topSortDesc);
   ghostedNoResponse.sort(topSortDesc);
   slaBreachedNoFollowUp.sort(topSortDesc);
   stuckNoFollowUp.sort(topSortDesc);
@@ -200,6 +215,7 @@ export function buildTodayQueue(
   return {
     overdue: overdue.map((x) => x.item),
     due24h: due24h.map((x) => x.item),
+    dueThisWeek: dueThisWeek.map((x) => x.item),
     ghostedNoResponse: ghostedNoResponse.map((x) => x.item),
     stuckNoFollowUp: stuckNoFollowUp.map((x) => x.item),
     slaBreachedNoFollowUp: slaBreachedNoFollowUp.map((x) => x.item),

@@ -499,6 +499,12 @@ export default function TodayQueue() {
         items: buckets.due24h,
       },
       {
+        key: "dueThisWeek" as const,
+        title: "Due this week",
+        hint: "Follow-ups due in the next 7 days",
+        items: buckets.dueThisWeek,
+      },
+      {
         key: "stuck" as const,
         title: "Stuck",
         hint: "No follow-up, aging in stage",
@@ -561,6 +567,9 @@ export default function TodayQueue() {
     }
     if (kind === "stuck") {
       return { label: "Set tomorrow", fn: actions.tomorrow };
+    }
+    if (kind === "due") {
+      return { label: "Snooze 7d", fn: actions.snooze7d };
     }
     return { label: "Snooze 7d", fn: actions.snooze7d };
   }
