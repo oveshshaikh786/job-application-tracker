@@ -96,9 +96,18 @@ export default function InterviewTracker({
   return (
     <div style={{ marginTop: 4 }}>
       {rounds.length === 0 && !adding && (
-        <p style={{ color: "var(--text-2)", fontSize: 13, marginBottom: 10 }}>
-          No interview rounds yet. Track each round as you progress.
-        </p>
+        <div style={{
+          border: "1px dashed var(--border-1)",
+          borderRadius: "var(--r)",
+          padding: "16px",
+          marginBottom: 12,
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: 22, marginBottom: 6 }}>📋</div>
+          <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>
+            No rounds yet — log each interview as you go.
+          </p>
+        </div>
       )}
 
       {rounds.map((r) => (
@@ -199,8 +208,8 @@ export default function InterviewTracker({
         </div>
       ) : (
         <button
-          className="btn btn-ghost"
-          style={{ marginTop: 8 }}
+          className="btn btn-primary"
+          style={{ marginTop: 8, width: "100%" }}
           onClick={() => setAdding(true)}
         >
           + Add round {rounds.length > 0 ? rounds.length + 1 : 1}

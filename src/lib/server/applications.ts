@@ -131,13 +131,27 @@ export async function getApplicationById(
   workspaceId?: string,
 ): Promise<Application | null> {
   const wsId = workspaceId ?? (await getCurrentWorkspaceId());
-  const row = await (prisma as any).application.findFirst({
-    where: { id, workspaceId: wsId },
-    include: {
-      role: { include: { company: true } },
-      events: { orderBy: { createdAt: "desc" } },
-    },
-  });
+  // Try to include interviews (requires InterviewRound table from migration).
+  // Falls back without the include if the table doesn't exist yet.
+  let row: any;
+  try {
+    row = await (prisma as any).application.findFirst({
+      where: { id, workspaceId: wsId },
+      include: {
+        role: { include: { company: true } },
+        events: { orderBy: { createdAt: "desc" } },
+        interviews: { orderBy: { round: "asc" } },
+      },
+    });
+  } catch {
+    row = await (prisma as any).application.findFirst({
+      where: { id, workspaceId: wsId },
+      include: {
+        role: { include: { company: true } },
+        events: { orderBy: { createdAt: "desc" } },
+      },
+    });
+  }
   if (!row) return null;
   return serializeApplication(row as any);
 }
