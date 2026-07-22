@@ -114,30 +114,31 @@ html[data-theme="dark"] {
 ================================================================ */
 
 html[data-theme="light"] {
-  --bg: #f4f4f5;
-  --bg-1: #ececee;
+  /* Warm white canvas — cards float above with shadow, not flat gray */
+  --bg: #eef0f3;
+  --bg-1: #e6e9ed;
   --bg-2: #ffffff;
-  --bg-3: #e8e8eb;
-  --bg-4: #dddde0;
+  --bg-3: #f0f1f4;
+  --bg-4: #e2e5e9;
 
-  --glass: rgba(0, 0, 0, 0.02);
-  --glass-md: rgba(0, 0, 0, 0.035);
-  --glass-lg: rgba(0, 0, 0, 0.055);
+  --glass: rgba(255, 255, 255, 0.50);
+  --glass-md: rgba(255, 255, 255, 0.70);
+  --glass-lg: rgba(255, 255, 255, 0.85);
 
-  --border: rgba(0, 0, 0, 0.08);
-  --border-1: rgba(0, 0, 0, 0.13);
-  --border-2: rgba(0, 0, 0, 0.20);
+  --border: rgba(0, 0, 0, 0.09);
+  --border-1: rgba(0, 0, 0, 0.14);
+  --border-2: rgba(0, 0, 0, 0.22);
 
-  --text: rgba(12, 12, 14, 0.97);
-  --text-1: rgba(12, 12, 14, 0.62);
-  --text-2: rgba(12, 12, 14, 0.40);
-  --text-3: rgba(12, 12, 14, 0.22);
+  --text: rgba(10, 10, 16, 0.95);
+  --text-1: rgba(10, 10, 16, 0.60);
+  --text-2: rgba(10, 10, 16, 0.38);
+  --text-3: rgba(10, 10, 16, 0.22);
 
   --accent: #4f46e5;
-  --accent-dim: rgba(79, 70, 229, 0.08);
-  --accent-rim: rgba(79, 70, 229, 0.22);
+  --accent-dim: rgba(79, 70, 229, 0.09);
+  --accent-rim: rgba(79, 70, 229, 0.24);
   --accent-glow:
-    0 0 20px rgba(79, 70, 229, 0.14), 0 0 5px rgba(79, 70, 229, 0.08);
+    0 0 20px rgba(79, 70, 229, 0.16), 0 0 5px rgba(79, 70, 229, 0.09);
 
   --ok: #16a34a;
   --ok-dim: rgba(22, 163, 74, 0.09);
@@ -155,42 +156,43 @@ html[data-theme="light"] {
   --critical-dim: rgba(225, 29, 72, 0.09);
   --critical-rim: rgba(225, 29, 72, 0.28);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 1px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.07);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 5px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.14), 0 3px 8px rgba(0, 0, 0, 0.08);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16), 0 6px 16px rgba(0, 0, 0, 0.09);
+  /* Proper shadows — this is what gives light UIs depth */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.11), 0 1px 3px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.13), 0 2px 5px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.15), 0 3px 8px rgba(0, 0, 0, 0.09);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.17), 0 6px 16px rgba(0, 0, 0, 0.10);
 
-  --card-accent-color: rgba(0, 0, 0, 0.07);
-  --shadow-card: 0 1px 6px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --card-accent-color: rgba(79, 70, 229, 0.08);
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.09), 0 2px 8px rgba(0, 0, 0, 0.07);
 
   --theme-bg-image:
     radial-gradient(
       ellipse 55vw 40vh at 92% -4%,
-      rgba(79, 70, 229, 0.04) 0%,
+      rgba(79, 70, 229, 0.05) 0%,
       transparent 55%
     ),
     radial-gradient(
       ellipse 38vw 32vh at 4% 96%,
-      rgba(79, 70, 229, 0.025) 0%,
+      rgba(79, 70, 229, 0.03) 0%,
       transparent 52%
     );
 
   --sidebar-bg: #ffffff;
-  --sidebar-border: rgba(0, 0, 0, 0.09);
+  --sidebar-border: rgba(0, 0, 0, 0.10);
   --sidebar-active-bg: rgba(79, 70, 229, 0.08);
-  --sidebar-active-border: rgba(79, 70, 229, 0.25);
+  --sidebar-active-border: rgba(79, 70, 229, 0.28);
   --sidebar-active-indicator: var(--accent);
-  --topbar-bg: rgba(244, 244, 245, 0.92);
+  --topbar-bg: rgba(238, 240, 243, 0.94);
 
-  --stage-draft: rgba(100, 100, 110, 0.35);
+  --stage-draft: rgba(90, 90, 105, 0.38);
   --stage-applied: var(--accent);
-  --stage-recruiter: rgba(126, 34, 206, 0.70);
-  --stage-tech: rgba(194, 65, 12, 0.70);
-  --stage-onsite: rgba(161, 98, 7, 0.80);
+  --stage-recruiter: rgba(126, 34, 206, 0.72);
+  --stage-tech: rgba(194, 65, 12, 0.72);
+  --stage-onsite: rgba(146, 88, 6, 0.85);
   --stage-offer: var(--ok);
   --stage-rejected: var(--danger);
-  --stage-withdrawn: rgba(100, 100, 110, 0.30);
+  --stage-withdrawn: rgba(90, 90, 105, 0.32);
 }
 
 /* ================================================================
@@ -4212,6 +4214,37 @@ html[data-theme="light"] .jt-theme-pill-thumb {
 html[data-theme="light"] .jt-theme-pill {
   background: var(--accent-dim);
   border-color: var(--accent-rim);
+}
+
+/* Light mode — cards need shadows to float above the gray canvas */
+html[data-theme="light"] .jt-stat-card {
+  box-shadow: var(--shadow-card);
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+html[data-theme="light"] .jt-app-card {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="light"] .jt-app-card:not(.no-lift):hover {
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.07);
+  transform: translateY(-2px);
+}
+
+html[data-theme="light"] .jt-detail-card {
+  box-shadow: var(--shadow-card);
+}
+
+html[data-theme="light"] .jt-kanban-col {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+html[data-theme="light"] .jt-topbar {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 /* Collapsed sidebar (tablet ≤ 860px) — hide text, centre avatar */
