@@ -103,7 +103,6 @@ export async function getApplications(
     include: {
       role: { include: { company: true } },
       events: { orderBy: { createdAt: "desc" } },
-      interviews: { orderBy: { round: "asc" } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -120,7 +119,6 @@ export async function getArchivedApplications(
     include: {
       role: { include: { company: true } },
       events: { orderBy: { createdAt: "desc" } },
-      interviews: { orderBy: { round: "asc" } },
     },
     orderBy: [{ archivedAt: "desc" }, { updatedAt: "desc" }],
   });
@@ -138,7 +136,6 @@ export async function getApplicationById(
     include: {
       role: { include: { company: true } },
       events: { orderBy: { createdAt: "desc" } },
-      interviews: { orderBy: { round: "asc" } },
     },
   });
   if (!row) return null;
